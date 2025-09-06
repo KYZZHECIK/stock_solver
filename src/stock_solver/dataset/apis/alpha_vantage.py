@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
-from typing import Generator
+from typing import Generator, Dict, Any
 
 from joblib import Memory
 import requests
-from requests import Response, Request, Session
+from requests import Response
 from tqdm import tqdm
 
 from pydantic import BaseModel
@@ -29,8 +29,8 @@ class AlphaVantageRequest(BaseModel):
     def query(self) -> Response:
         base_url = "https://www.alphavantage.co/query"
         params = self.params()
-        req = Request("GET", base_url, params=params)
-        prepped = Session().prepare_request(req)
+        # req = Request("GET", base_url, params=params)
+        # prepped = Session().prepare_request(req)
         # print(prepped.url)
         response = requests.get(base_url, params=params)
         if not response.ok:
@@ -80,6 +80,9 @@ class AlphaVantageOverviewRequest(AlphaVantageSymbolRequest):
 
 class AlphaVantageNewsTickerSentiment(BaseModel):
     ticker: str
+    relevance_score: str
+    ticker_sentiment_score: str
+    ticker_sentiment_label: str
 
 
 class AlphaVantageNewsFeedItem(BaseModel):
@@ -92,12 +95,29 @@ class AlphaVantageNewsResult(BaseModel):
     relevance_score_definition: str
     feed: list[AlphaVantageNewsFeedItem]
 
+    @classmethod
+    def empty(cls):
+        return cls(
+            items=0,
+            sentiment_score_definition="",
+            relevance_score_definition="",
+            feed=[],
+        )
+
+    @classmethod
+    def parse(cls, data: dict[str, Any]):
+        # If no articles were found, API returns OK response with error message in "Information"
+        if data.get("Information"):
+            return cls.empty()
+        
+        return cls(**data)
+
 
 @memory.cache
-def collect_overview():
+def collect_overview() -> Dict[str, Dict[str, str]]:
     assets = get_assets()
     symbols = [a.symbol for a in assets]
-    data = {}
+    data: Dict[str, Dict[str, str]] = {}
     for s in tqdm(symbols):
         request = AlphaVantageOverviewRequest(symbol=s)
         try:
@@ -112,7 +132,7 @@ def collect_overview():
 
 def time_iterator(
     start: datetime, end: datetime, step: timedelta
-) -> Generator[tuple[datetime, datetime]]:
+) -> Generator[tuple[datetime, datetime], None, None]:
     cur = start
     next = start + step
     while next < end:
@@ -130,13 +150,12 @@ def time_iterator_len(start: datetime, end: datetime, step: timedelta) -> int:
     return count
 
 
-# TODO: this doesn't work yet
 @memory.cache
-def collect_news(tickers: list[str]) -> list[AlphaVantageNewsFeedItem]:
+def collect_news(tickers: list[str]):
     TIME_STEP = timedelta(days=30)
-    START_TIME = datetime(year=2024, month=1, day=1)
+    START_TIME = datetime(year=2023, month=1, day=1)
     END_TIME = datetime.now()
-
+    tickers = tickers[: TICKERS_LIMIT]
     assert len(tickers) <= TICKERS_LIMIT
 
     news: list[AlphaVantageNewsFeedItem] = []
@@ -144,16 +163,18 @@ def collect_news(tickers: list[str]) -> list[AlphaVantageNewsFeedItem]:
     length = time_iterator_len(START_TIME, END_TIME, TIME_STEP)
     for start, end in tqdm(time_iterator(START_TIME, END_TIME, TIME_STEP), total=length):
         request = AlphaVantageNewsRequest(
-            tickers=tickers,
-            time_from=start,
-            time_to=end,
+            tickers=tickers,    # FIXME, trying to find articles with ALL the tickers inside, 
+            time_from=start,    # which is pretty much impossible with 500+ tickers.
+            time_to=end,        # Consider switching to news per ticket
             limit=1000,
         )
-        response = request.query()
-        data = response.json()
-        result = AlphaVantageNewsResult(**data)
-        news.extend(result.feed)
-
+        try:
+            response = request.query()
+            data = response.json()
+            result = AlphaVantageNewsResult.parse(data)
+            news.extend(result.feed)
+        except ValueError:
+            print(f"Failed to fetch news for {tickers} from {start} till {end}, skipping.")
     return news
 
 
@@ -163,9 +184,8 @@ def get_news(symbol: str, time_from: datetime, time_to: datetime):
     )
     response = request.query()
     data = response.json()
-    result = AlphaVantageNewsResult(**data)
+    result = AlphaVantageNewsResult.parse(data)
     return result
-
 
 if __name__ == "__main__":
     data = collect_overview()
@@ -179,7 +199,8 @@ if __name__ == "__main__":
     )
     data = [(k, int(v["MarketCapitalization"])) for k, v in data]
     data = sorted(data, key=lambda x: x[1], reverse=True)
-    data = data[:6]
     tickers = [k for k, _ in data]
+    print(tickers)
     news = collect_news(tickers=tickers)
-    print()
+    print(news)
+    

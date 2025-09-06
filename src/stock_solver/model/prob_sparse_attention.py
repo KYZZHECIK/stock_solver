@@ -10,8 +10,7 @@ class ProbSparseAttention(torch.nn.Module):
         self.eps = eps
 
     def forward(self, Q: torch.Tensor, K: torch.Tensor, V: torch.Tensor) -> torch.Tensor:
-        B, L_q, dim = Q.shape
-        _, L_k, _ = K.shape
+        _, L_q, dim = Q.shape
         
         scores = get_scores(Q, K, dim)
         M = get_sparsity_measure(scores)
