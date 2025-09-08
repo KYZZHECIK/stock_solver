@@ -1,117 +1,17 @@
 from datetime import datetime, timedelta
-from typing import Generator, Dict, Any
+from typing import Generator, Dict
 
 from joblib import Memory
-import requests
-from requests import Response
 from tqdm import tqdm
 
-from pydantic import BaseModel
-
-from src.stock_solver.dataset.utils import api_keys
 from src.stock_solver.dataset.apis.alpaca import get_assets
 
-api_key = api_keys().alpha_vantage_api
+from src.stock_solver.dataset.apis.alpha_vantage_requests.overview_request import AlphaVantageOverviewRequest
+from src.stock_solver.dataset.apis.alpha_vantage_requests.news_request import AlphaVantageNewsRequest
+from src.stock_solver.dataset.apis.alpha_vantage_results.news_result import AlphaVantageNewsResult, AlphaVantageNewsFeedItem
+
 TICKERS_LIMIT = 500
 memory = Memory(".alpha_vantage_cache", verbose=0)
-
-
-class AlphaVantageRequest(BaseModel):
-    function: str
-    apikey: str = api_key
-
-    def params(self) -> dict[str, str]:
-        return {
-            "function": self.function,
-            "apikey": self.apikey,
-        }
-
-    def query(self) -> Response:
-        base_url = "https://www.alphavantage.co/query"
-        params = self.params()
-        # req = Request("GET", base_url, params=params)
-        # prepped = Session().prepare_request(req)
-        # print(prepped.url)
-        response = requests.get(base_url, params=params)
-        if not response.ok:
-            raise ValueError(f"Error fetching data from Alpha Vantage: {response.reason}")
-        return response
-
-
-class AlphaVantageTickersRequest(AlphaVantageRequest):
-    tickers: list[str]
-
-    def params(self) -> dict[str, str]:
-        params = super().params()
-        ticker_sep = "," if len(self.tickers) > 1 else ""
-        params["tickers"] = ticker_sep.join(self.tickers)
-        return params
-
-
-class AlphaVantageSymbolRequest(AlphaVantageRequest):
-    symbol: str
-
-    def params(self) -> dict[str, str]:
-        params = super().params()
-        params["symbol"] = self.symbol
-        return params
-
-
-class AlphaVantageNewsRequest(AlphaVantageTickersRequest):
-    function: str = "NEWS_SENTIMENT"
-    time_from: datetime
-    time_to: datetime
-    limit: int
-
-    def params(self) -> dict[str, str]:
-        params = super().params()
-        # convert to YYYYMMDDTHHMM
-        time_str = "%Y%m%dT%H%M"
-        params["time_from"] = self.time_from.strftime(time_str)
-        params["time_to"] = self.time_to.strftime(time_str)
-        params["limit"] = str(self.limit)
-        params["sort"] = "EARLIEST"
-        return params
-
-
-class AlphaVantageOverviewRequest(AlphaVantageSymbolRequest):
-    function: str = "OVERVIEW"
-
-
-class AlphaVantageNewsTickerSentiment(BaseModel):
-    ticker: str
-    relevance_score: str
-    ticker_sentiment_score: str
-    ticker_sentiment_label: str
-
-
-class AlphaVantageNewsFeedItem(BaseModel):
-    ticker_sentiment: list[AlphaVantageNewsTickerSentiment]
-
-
-class AlphaVantageNewsResult(BaseModel):
-    items: int
-    sentiment_score_definition: str
-    relevance_score_definition: str
-    feed: list[AlphaVantageNewsFeedItem]
-
-    @classmethod
-    def empty(cls):
-        return cls(
-            items=0,
-            sentiment_score_definition="",
-            relevance_score_definition="",
-            feed=[],
-        )
-
-    @classmethod
-    def parse(cls, data: dict[str, Any]):
-        # If no articles were found, API returns OK response with error message in "Information"
-        if data.get("Information"):
-            return cls.empty()
-        
-        return cls(**data)
-
 
 @memory.cache
 def collect_overview() -> Dict[str, Dict[str, str]]:
