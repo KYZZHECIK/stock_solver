@@ -6,15 +6,24 @@ from tqdm import tqdm
 
 from src.stock_solver.dataset.apis.alpaca import get_assets
 
-from src.stock_solver.dataset.apis.alpha_vantage_requests.overview_request import AlphaVantageOverviewRequest
-from src.stock_solver.dataset.apis.alpha_vantage_requests.news_request import AlphaVantageNewsRequest
-from src.stock_solver.dataset.apis.alpha_vantage_results.news_result import AlphaVantageNewsResult, AlphaVantageNewsFeedItem
+from stock_solver.dataset.apis.alpha_vantage_requests import(
+    AlphaVantageOverviewRequest,
+    AlphaVantageNewsRequest,
+    AlphaVantageInsiderTransactionsRequest,
+    AlphaVantageTimeSeriesDailyAdjusted,
+)
+
+from stock_solver.dataset.apis.alpha_vantage_results import(
+    AlphaVantageNewsResult,
+    AlphaVantageNewsFeedItem,
+    AlphaVantageInsiderTransactionsResult,     
+)
 
 TICKERS_LIMIT = 500
 memory = Memory(".alpha_vantage_cache", verbose=0)
 
 @memory.cache
-def collect_overview() -> Dict[str, Dict[str, str]]:
+def collect_overview():
     assets = get_assets()
     symbols = [a.symbol for a in assets]
     data: Dict[str, Dict[str, str]] = {}
@@ -29,6 +38,20 @@ def collect_overview() -> Dict[str, Dict[str, str]]:
             data[s] = j
     return data
 
+@memory.cache
+def collect_insider_transactions(symbols: list[str]):
+    data: Dict[str, AlphaVantageInsiderTransactionsResult] = {}
+    for symbol in tqdm(symbols):
+        request = AlphaVantageInsiderTransactionsRequest(symbol=symbol)
+        try: 
+            response = request.query()
+        except ValueError:
+            print(f"Failed to fetch insider transactions for {symbol}, skipping.")
+            continue
+        transactions = response.json()
+        result = AlphaVantageInsiderTransactionsResult.parse(transactions)
+        data[symbol] = result
+    return data
 
 def time_iterator(
     start: datetime, end: datetime, step: timedelta
@@ -88,19 +111,21 @@ def get_news(symbol: str, time_from: datetime, time_to: datetime):
     return result
 
 if __name__ == "__main__":
-    data = collect_overview()
-    data = data.items()
-    data = list(
-        filter(
-            lambda kv: "MarketCapitalization" in kv[1].keys()
-            and kv[1]["MarketCapitalization"] != "None",
-            data,
-        )
-    )
-    data = [(k, int(v["MarketCapitalization"])) for k, v in data]
-    data = sorted(data, key=lambda x: x[1], reverse=True)
-    tickers = [k for k, _ in data]
-    print(tickers)
-    news = collect_news(tickers=tickers)
-    print(news)
+    data = collect_insider_transactions(["IBM"])
+    print(data)
+    # data = collect_overview()
+    # data = data.items()
+    # data = list(
+    #     filter(
+    #         lambda kv: "MarketCapitalization" in kv[1].keys()
+    #         and kv[1]["MarketCapitalization"] != "None",
+    #         data,
+    #     )
+    # )
+    # data = [(k, int(v["MarketCapitalization"])) for k, v in data]
+    # data = sorted(data, key=lambda x: x[1], reverse=True)
+    # tickers = [k for k, _ in data]
+    # print(tickers)
+    # news = collect_news(tickers=tickers)
+    # print(news)
     
