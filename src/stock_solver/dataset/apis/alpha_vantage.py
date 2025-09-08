@@ -10,7 +10,7 @@ from stock_solver.dataset.apis.alpha_vantage_requests import(
     AlphaVantageOverviewRequest,
     AlphaVantageNewsRequest,
     AlphaVantageInsiderTransactionsRequest,
-    AlphaVantageTimeSeriesDailyAdjusted,
+    AlphaVantageTimeSeriesDailyRequest,
 )
 
 from stock_solver.dataset.apis.alpha_vantage_results import(
@@ -52,6 +52,12 @@ def collect_insider_transactions(symbols: list[str]):
         result = AlphaVantageInsiderTransactionsResult.parse(transactions)
         data[symbol] = result
     return data
+
+# @memory.cache
+# def collect_timeseries_daily(symbols: list[str]):
+#     data = {}
+#     # for symbol in tqdm(symbols):
+        
 
 def time_iterator(
     start: datetime, end: datetime, step: timedelta

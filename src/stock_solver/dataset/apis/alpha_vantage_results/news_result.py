@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Any
-
+from src.stock_solver.dataset.apis.alpha_vantage_results.result import AlphaVantageResult
 
 class AlphaVantageNewsTickerSentiment(BaseModel):
     ticker: str
@@ -8,12 +8,10 @@ class AlphaVantageNewsTickerSentiment(BaseModel):
     ticker_sentiment_score: str
     ticker_sentiment_label: str
 
-
 class AlphaVantageNewsFeedItem(BaseModel):
     ticker_sentiment: list[AlphaVantageNewsTickerSentiment]
 
-
-class AlphaVantageNewsResult(BaseModel):
+class AlphaVantageNewsResult(AlphaVantageResult):
     items: int
     sentiment_score_definition: str
     relevance_score_definition: str
@@ -29,9 +27,6 @@ class AlphaVantageNewsResult(BaseModel):
         )
 
     @classmethod
-    def parse(cls, data: dict[str, Any]):
+    def _is_invalid_data(cls, data: dict[str, Any]) -> bool:
         # If no articles were found, API returns OK response with error message in "Information"
-        if data.get("Information"):
-            return cls.empty()
-        
-        return cls(**data)
+        return not data or "Information" in data

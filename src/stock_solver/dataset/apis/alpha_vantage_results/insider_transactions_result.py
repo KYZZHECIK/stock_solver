@@ -1,5 +1,6 @@
 from pydantic import BaseModel 
-from typing import Literal, Any
+from typing import Literal, Self
+from src.stock_solver.dataset.apis.alpha_vantage_results.result import AlphaVantageResult
 
 class AlphaVantageInsiderTransaction(BaseModel):
     transaction_date: str
@@ -11,10 +12,9 @@ class AlphaVantageInsiderTransaction(BaseModel):
     shares: str
     share_price: str
 
-class AlphaVantageInsiderTransactionsResult(BaseModel):
+class AlphaVantageInsiderTransactionsResult(AlphaVantageResult):
     data: list[AlphaVantageInsiderTransaction]
-
+    
     @classmethod
-    def parse(cls, data: dict[str, Any]):
-        
-        return cls(**data)
+    def empty(cls) -> Self:
+        return cls(data=[])
