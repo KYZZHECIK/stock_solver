@@ -12,19 +12,10 @@ class AlphaVantageNewsFeedItem(BaseModel):
     ticker_sentiment: list[AlphaVantageNewsTickerSentiment]
 
 class AlphaVantageNewsResult(AlphaVantageResult):
-    items: int
-    sentiment_score_definition: str
-    relevance_score_definition: str
-    feed: list[AlphaVantageNewsFeedItem]
-
-    @classmethod
-    def empty(cls):
-        return cls(
-            items=0,
-            sentiment_score_definition="",
-            relevance_score_definition="",
-            feed=[],
-        )
+    items: int = 0
+    sentiment_score_definition: str = ""
+    relevance_score_definition: str = ""
+    feed: list[AlphaVantageNewsFeedItem] = []
 
     @classmethod
     def _is_invalid_data(cls, data: dict[str, Any]) -> bool:

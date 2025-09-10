@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Generator, Dict
+from typing import Generator, Dict, Literal
 
 from joblib import Memory
 from tqdm import tqdm
@@ -17,15 +17,14 @@ from stock_solver.dataset.apis.alpha_vantage_results import(
     AlphaVantageNewsResult,
     AlphaVantageNewsFeedItem,
     AlphaVantageInsiderTransactionsResult,     
+    AlphaVantageTimeSeriesDailyResult
 )
 
 TICKERS_LIMIT = 500
 memory = Memory(".alpha_vantage_cache", verbose=0)
 
 @memory.cache
-def collect_overview():
-    assets = get_assets()
-    symbols = [a.symbol for a in assets]
+def collect_overview(symbols:list[str]):
     data: Dict[str, Dict[str, str]] = {}
     for s in tqdm(symbols):
         request = AlphaVantageOverviewRequest(symbol=s)
@@ -53,10 +52,20 @@ def collect_insider_transactions(symbols: list[str]):
         data[symbol] = result
     return data
 
-# @memory.cache
-# def collect_timeseries_daily(symbols: list[str]):
-#     data = {}
-#     # for symbol in tqdm(symbols):
+@memory.cache
+def collect_timeseries_daily(symbols: list[str], output_size: Literal["compact", "full"] = "compact"):
+    data: dict[str, AlphaVantageTimeSeriesDailyResult] = {}
+    for symbol in tqdm(symbols):
+        request = AlphaVantageTimeSeriesDailyRequest(symbol=symbol, output_size=output_size)
+        try:
+            response = request.query()
+        except ValueError:
+            print(f"Failed to fetch timeseries daily for {symbol}, skipping.")
+            continue
+        timeseries = response.json()
+        result = AlphaVantageTimeSeriesDailyResult.parse(timeseries)
+        data[symbol] = result
+    return data
         
 
 def time_iterator(
@@ -117,7 +126,7 @@ def get_news(symbol: str, time_from: datetime, time_to: datetime):
     return result
 
 if __name__ == "__main__":
-    data = collect_insider_transactions(["IBM"])
+    data = collect_timeseries_daily(["IBM"])
     print(data)
     # data = collect_overview()
     # data = data.items()

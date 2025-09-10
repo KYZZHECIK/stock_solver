@@ -1,5 +1,5 @@
 from pydantic import BaseModel 
-from typing import Literal, Self
+from typing import Literal
 from src.stock_solver.dataset.apis.alpha_vantage_results.result import AlphaVantageResult
 
 class AlphaVantageInsiderTransaction(BaseModel):
@@ -13,8 +13,4 @@ class AlphaVantageInsiderTransaction(BaseModel):
     share_price: str
 
 class AlphaVantageInsiderTransactionsResult(AlphaVantageResult):
-    data: list[AlphaVantageInsiderTransaction]
-    
-    @classmethod
-    def empty(cls) -> Self:
-        return cls(data=[])
+    data: list[AlphaVantageInsiderTransaction] = []
