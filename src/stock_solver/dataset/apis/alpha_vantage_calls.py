@@ -6,28 +6,35 @@ from tqdm import tqdm
 
 from src.stock_solver.dataset.apis.alpaca import get_assets
 
-from stock_solver.dataset.apis.alpha_vantage_requests import(
-    AlphaVantageOverviewRequest,
-    AlphaVantageNewsRequest,
-    AlphaVantageInsiderTransactionsRequest,
-    AlphaVantageTimeSeriesDailyRequest,
-)
+import stock_solver.dataset.apis.alpha_vantage as AV
+# from stock_solver.dataset.apis.alpha_vantage import(
+#     AlphaVantageOverviewRequest,
+#     AlphaVantageNewsRequest,
+#     AlphaVantageInsiderTransactionsRequest,
+#     AlphaVantageTimeSeriesDailyRequest,
+# )
+# from stock_solver.dataset.apis.alpha_vantage.alpha_vantage_requests import(
+#     AlphaVantageOverviewRequest,
+#     AlphaVantageNewsRequest,
+#     AlphaVantageInsiderTransactionsRequest,
+#     AlphaVantageTimeSeriesDailyRequest,
+# )
 
-from stock_solver.dataset.apis.alpha_vantage_results import(
-    AlphaVantageNewsResult,
-    AlphaVantageNewsFeedItem,
-    AlphaVantageInsiderTransactionsResult,     
-    AlphaVantageTimeSeriesDailyResult
-)
+# from stock_solver.dataset.apis.alpha_vantage_results import(
+#     AlphaVantageNewsResult,
+#     AlphaVantageNewsFeedItem,
+#     AlphaVantageInsiderTransactionsResult,     
+#     AlphaVantageTimeSeriesDailyResult
+# )
 
 TICKERS_LIMIT = 500
 memory = Memory(".alpha_vantage_cache", verbose=0)
 
-@memory.cache
+# @memory.cache
 def collect_overview(symbols:list[str]):
     data: Dict[str, Dict[str, str]] = {}
     for s in tqdm(symbols):
-        request = AlphaVantageOverviewRequest(symbol=s)
+        request = AV.OverviewRequest(symbol=s)
         try:
             result = request.query()
         except ValueError:
@@ -37,33 +44,33 @@ def collect_overview(symbols:list[str]):
             data[s] = j
     return data
 
-@memory.cache
+# @memory.cache
 def collect_insider_transactions(symbols: list[str]):
-    data: Dict[str, AlphaVantageInsiderTransactionsResult] = {}
+    data: Dict[str, AV.InsiderTransactionsResult] = {}
     for symbol in tqdm(symbols):
-        request = AlphaVantageInsiderTransactionsRequest(symbol=symbol)
+        request = AV.InsiderTransactionsRequest(symbol=symbol)
         try: 
             response = request.query()
         except ValueError:
             print(f"Failed to fetch insider transactions for {symbol}, skipping.")
             continue
         transactions = response.json()
-        result = AlphaVantageInsiderTransactionsResult.parse(transactions)
+        result = AV.InsiderTransactionsResult.parse(transactions)
         data[symbol] = result
     return data
 
-@memory.cache
+# @memory.cache
 def collect_timeseries_daily(symbols: list[str], output_size: Literal["compact", "full"] = "compact"):
-    data: dict[str, AlphaVantageTimeSeriesDailyResult] = {}
+    data: dict[str, AV.TimeSeriesDailyResult] = {}
     for symbol in tqdm(symbols):
-        request = AlphaVantageTimeSeriesDailyRequest(symbol=symbol, output_size=output_size)
+        request = AV.TimeSeriesDailyRequest(symbol=symbol, output_size=output_size)
         try:
             response = request.query()
         except ValueError:
             print(f"Failed to fetch timeseries daily for {symbol}, skipping.")
             continue
         timeseries = response.json()
-        result = AlphaVantageTimeSeriesDailyResult.parse(timeseries)
+        result = AV.TimeSeriesDailyResult.parse(timeseries)
         data[symbol] = result
     return data
         
@@ -88,7 +95,7 @@ def time_iterator_len(start: datetime, end: datetime, step: timedelta) -> int:
     return count
 
 
-@memory.cache
+# @memory.cache
 def collect_news(tickers: list[str]):
     TIME_STEP = timedelta(days=30)
     START_TIME = datetime(year=2023, month=1, day=1)
@@ -96,11 +103,11 @@ def collect_news(tickers: list[str]):
     tickers = tickers[: TICKERS_LIMIT]
     assert len(tickers) <= TICKERS_LIMIT
 
-    news: list[AlphaVantageNewsFeedItem] = []
+    news: list[AV.NewsFeedItem] = []
 
     length = time_iterator_len(START_TIME, END_TIME, TIME_STEP)
     for start, end in tqdm(time_iterator(START_TIME, END_TIME, TIME_STEP), total=length):
-        request = AlphaVantageNewsRequest(
+        request = AV.NewsRequest(
             tickers=tickers,    # FIXME, trying to find articles with ALL the tickers inside, 
             time_from=start,    # which is pretty much impossible with 500+ tickers.
             time_to=end,        # Consider switching to news per ticket
@@ -109,7 +116,7 @@ def collect_news(tickers: list[str]):
         try:
             response = request.query()
             data = response.json()
-            result = AlphaVantageNewsResult.parse(data)
+            result = AV.NewsResult.parse(data)
             news.extend(result.feed)
         except ValueError:
             print(f"Failed to fetch news for {tickers} from {start} till {end}, skipping.")
@@ -117,12 +124,12 @@ def collect_news(tickers: list[str]):
 
 
 def get_news(symbol: str, time_from: datetime, time_to: datetime):
-    request = AlphaVantageNewsRequest(
+    request = AV.NewsRequest(
         tickers=[symbol], time_from=time_from, time_to=time_to, limit=1000
     )
     response = request.query()
     data = response.json()
-    result = AlphaVantageNewsResult.parse(data)
+    result = AV.NewsResult.parse(data)
     return result
 
 if __name__ == "__main__":

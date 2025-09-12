@@ -1,6 +1,6 @@
-from src.stock_solver.dataset.apis.alpha_vantage_requests.request import AlphaVantageRequest
+from src.stock_solver.dataset.apis.alpha_vantage.requests import Request
 
-class AlphaVantageTickersRequest(AlphaVantageRequest):
+class TickersRequest(Request):
     tickers: list[str]
 
     def params(self) -> dict[str, str]:

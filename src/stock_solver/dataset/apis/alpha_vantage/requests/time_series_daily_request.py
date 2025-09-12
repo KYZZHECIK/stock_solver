@@ -1,7 +1,7 @@
-from src.stock_solver.dataset.apis.alpha_vantage_requests.symbol_request import AlphaVantageSymbolRequest
+from src.stock_solver.dataset.apis.alpha_vantage.requests import SymbolRequest
 from typing import Literal
 
-class AlphaVantageTimeSeriesDailyRequest(AlphaVantageSymbolRequest):
+class TimeSeriesDailyRequest(SymbolRequest):
     function: str = "TIME_SERIES_DAILY_ADJUSTED"
     output_size: Literal["full", "compact"] = "compact"
     

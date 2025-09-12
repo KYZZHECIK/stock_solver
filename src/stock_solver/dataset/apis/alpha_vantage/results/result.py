@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Any, Self
 
-class AlphaVantageResult(BaseModel):
+class Result(BaseModel):
     @classmethod
     def parse(cls, data: dict[str, Any]) -> Self:
         if cls._is_invalid_data(data):

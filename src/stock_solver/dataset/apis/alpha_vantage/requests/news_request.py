@@ -1,7 +1,7 @@
 from datetime import datetime
-from src.stock_solver.dataset.apis.alpha_vantage_requests.tickers_request import AlphaVantageTickersRequest
+from src.stock_solver.dataset.apis.alpha_vantage.requests import TickersRequest
 
-class AlphaVantageNewsRequest(AlphaVantageTickersRequest):
+class NewsRequest(TickersRequest):
     function: str = "NEWS_SENTIMENT"
     time_from: datetime
     time_to: datetime

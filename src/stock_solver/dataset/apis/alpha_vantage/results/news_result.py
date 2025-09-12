@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Any
-from src.stock_solver.dataset.apis.alpha_vantage_results.result import AlphaVantageResult
+from src.stock_solver.dataset.apis.alpha_vantage.results import Result
 
 class AlphaVantageNewsTickerSentiment(BaseModel):
     ticker: str
@@ -8,14 +8,14 @@ class AlphaVantageNewsTickerSentiment(BaseModel):
     ticker_sentiment_score: str
     ticker_sentiment_label: str
 
-class AlphaVantageNewsFeedItem(BaseModel):
+class NewsFeedItem(BaseModel):
     ticker_sentiment: list[AlphaVantageNewsTickerSentiment]
 
-class AlphaVantageNewsResult(AlphaVantageResult):
+class NewsResult(Result):
     items: int = 0
     sentiment_score_definition: str = ""
     relevance_score_definition: str = ""
-    feed: list[AlphaVantageNewsFeedItem] = []
+    feed: list[NewsFeedItem] = []
 
     @classmethod
     def _is_invalid_data(cls, data: dict[str, Any]) -> bool:

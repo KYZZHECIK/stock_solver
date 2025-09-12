@@ -1,6 +1,6 @@
-from src.stock_solver.dataset.apis.alpha_vantage_requests.request import AlphaVantageRequest
+from src.stock_solver.dataset.apis.alpha_vantage.requests import Request
 
-class AlphaVantageSymbolRequest(AlphaVantageRequest):
+class SymbolRequest(Request):
     symbol: str
 
     def params(self) -> dict[str, str]:
