@@ -1,4 +1,5 @@
-from src.stock_solver.dataset.apis.alpha_vantage.requests import SymbolRequest, OutputSize
+from src.stock_solver.dataset.apis.alpha_vantage.requests import SymbolRequest
+from ..types import OutputSize
 
 class TimeSeriesDailyRequest(SymbolRequest):
     function: str = "TIME_SERIES_DAILY_ADJUSTED"

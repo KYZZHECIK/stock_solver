@@ -1,4 +1,5 @@
-from src.stock_solver.dataset.apis.alpha_vantage.requests import SymbolRequest, OutputSize, Interval
+from src.stock_solver.dataset.apis.alpha_vantage.requests import SymbolRequest
+from ..types import OutputSize, Interval
 
 from datetime import date
 from typing import Optional

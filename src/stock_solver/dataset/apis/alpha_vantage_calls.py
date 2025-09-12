@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 from typing import Generator, Dict
 
-from joblib import Memory
+from joblib import Memory # type: ignore
 from tqdm import tqdm
 
 from src.stock_solver.dataset.apis.alpaca import get_assets
@@ -25,6 +25,7 @@ def collect_overview(symbols:list[str]):
             data[s] = j
     return data
 
+
 # @memory.cache
 def collect_insider_transactions(symbols: list[str]):
     data: Dict[str, AV.InsiderTransactionsResult] = {}
@@ -40,6 +41,7 @@ def collect_insider_transactions(symbols: list[str]):
         data[symbol] = result
     return data
 
+
 # @memory.cache
 def collect_timeseries_day(symbols: list[str]):
     data: dict[str, AV.TimeSeriesResult] = {}
@@ -54,7 +56,8 @@ def collect_timeseries_day(symbols: list[str]):
         result = AV.TimeSeriesResult.parse(timeseries)
         data[symbol] = result
     return data
-        
+
+
 # @memery.cache
 def collect_timeseries_intraday(symbols: list[str], interval: AV.Interval, month: date):
     data: dict[str, AV.TimeSeriesResult] = {}
@@ -69,6 +72,7 @@ def collect_timeseries_intraday(symbols: list[str], interval: AV.Interval, month
         result = AV.TimeSeriesResult.parse(timeseries)
         data[symbol] = result
     return data
+
 
 def time_iterator(
     start: datetime, end: datetime, step: timedelta
