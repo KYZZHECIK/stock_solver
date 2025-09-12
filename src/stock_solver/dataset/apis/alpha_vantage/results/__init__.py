@@ -1,4 +1,4 @@
-from .result import *
-from .news_result import *
-from .insider_transactions_result import *
-from .time_series_result import *
+from .result import Result
+from .news_result import NewsResult, NewsFeedItem
+from .insider_transactions_result import InsiderTransactionsResult
+from .time_series_result import TimeSeriesResult, OHLCV

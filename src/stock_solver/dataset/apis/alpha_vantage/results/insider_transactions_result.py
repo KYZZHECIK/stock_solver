@@ -1,6 +1,6 @@
 from pydantic import BaseModel 
 from typing import Literal
-from src.stock_solver.dataset.apis.alpha_vantage.results import Result
+from .result import Result
 
 class InsiderTransaction(BaseModel):
     transaction_date: str

@@ -1,4 +1,4 @@
-from src.stock_solver.dataset.apis.alpha_vantage.requests import SymbolRequest
+from .symbol_request import SymbolRequest
 
 class OverviewRequest(SymbolRequest):
     function: str = "OVERVIEW"

@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Any, Dict
 from pydantic.functional_validators import model_validator
 
-from src.stock_solver.dataset.apis.alpha_vantage.results import Result
+from .result import Result
 
 class OHLCV(BaseModel):
     open: str

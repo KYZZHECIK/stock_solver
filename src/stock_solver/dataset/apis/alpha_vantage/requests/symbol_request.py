@@ -1,4 +1,4 @@
-from src.stock_solver.dataset.apis.alpha_vantage.requests import Request
+from .request import Request
 
 class SymbolRequest(Request):
     symbol: str

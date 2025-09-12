@@ -1,5 +1,5 @@
 from datetime import datetime
-from src.stock_solver.dataset.apis.alpha_vantage.requests import TickersRequest
+from .tickers_request import TickersRequest
 
 class NewsRequest(TickersRequest):
     function: str = "NEWS_SENTIMENT"

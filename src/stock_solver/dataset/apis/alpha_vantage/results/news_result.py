@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Any
-from src.stock_solver.dataset.apis.alpha_vantage.results import Result
+from .result import Result
 
 class NewsTickerSentiment(BaseModel):
     ticker: str

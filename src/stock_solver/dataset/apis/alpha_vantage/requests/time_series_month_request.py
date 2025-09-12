@@ -1,4 +1,4 @@
-from src.stock_solver.dataset.apis.alpha_vantage.requests import SymbolRequest
+from .symbol_request import SymbolRequest
 
 class TimeSeriesMonthRequest(SymbolRequest):
     function: str = "TIME_SERIES_MONTHLY"
