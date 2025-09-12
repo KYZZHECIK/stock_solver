@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta
-from typing import Generator, Dict, Literal
+from datetime import date, datetime, timedelta
+from typing import Generator, Dict
 
 from joblib import Memory
 from tqdm import tqdm
@@ -7,25 +7,6 @@ from tqdm import tqdm
 from src.stock_solver.dataset.apis.alpaca import get_assets
 
 import stock_solver.dataset.apis.alpha_vantage as AV
-# from stock_solver.dataset.apis.alpha_vantage import(
-#     AlphaVantageOverviewRequest,
-#     AlphaVantageNewsRequest,
-#     AlphaVantageInsiderTransactionsRequest,
-#     AlphaVantageTimeSeriesDailyRequest,
-# )
-# from stock_solver.dataset.apis.alpha_vantage.alpha_vantage_requests import(
-#     AlphaVantageOverviewRequest,
-#     AlphaVantageNewsRequest,
-#     AlphaVantageInsiderTransactionsRequest,
-#     AlphaVantageTimeSeriesDailyRequest,
-# )
-
-# from stock_solver.dataset.apis.alpha_vantage_results import(
-#     AlphaVantageNewsResult,
-#     AlphaVantageNewsFeedItem,
-#     AlphaVantageInsiderTransactionsResult,     
-#     AlphaVantageTimeSeriesDailyResult
-# )
 
 TICKERS_LIMIT = 500
 memory = Memory(".alpha_vantage_cache", verbose=0)
@@ -60,20 +41,34 @@ def collect_insider_transactions(symbols: list[str]):
     return data
 
 # @memory.cache
-def collect_timeseries_daily(symbols: list[str], output_size: Literal["compact", "full"] = "compact"):
-    data: dict[str, AV.TimeSeriesDailyResult] = {}
+def collect_timeseries_day(symbols: list[str]):
+    data: dict[str, AV.TimeSeriesResult] = {}
     for symbol in tqdm(symbols):
-        request = AV.TimeSeriesDailyRequest(symbol=symbol, output_size=output_size)
+        request = AV.TimeSeriesDailyRequest(symbol=symbol)
         try:
             response = request.query()
         except ValueError:
             print(f"Failed to fetch timeseries daily for {symbol}, skipping.")
             continue
         timeseries = response.json()
-        result = AV.TimeSeriesDailyResult.parse(timeseries)
+        result = AV.TimeSeriesResult.parse(timeseries)
         data[symbol] = result
     return data
         
+# @memery.cache
+def collect_timeseries_intraday(symbols: list[str], interval: AV.Interval, month: date):
+    data: dict[str, AV.TimeSeriesResult] = {}
+    for symbol in tqdm(symbols):
+        request = AV.TimeSeriesIntradayRequest(symbol=symbol, interval=interval, month=month)
+        try: 
+            response = request.query()
+        except ValueError:
+            print(f"Failed to fetch timeseries intradaily for {symbol}, skipping.")
+            continue
+        timeseries = response.json()
+        result = AV.TimeSeriesResult.parse(timeseries)
+        data[symbol] = result
+    return data
 
 def time_iterator(
     start: datetime, end: datetime, step: timedelta
@@ -133,7 +128,7 @@ def get_news(symbol: str, time_from: datetime, time_to: datetime):
     return result
 
 if __name__ == "__main__":
-    data = collect_timeseries_daily(["IBM"])
+    data = collect_timeseries_intraday(["IBM"], "60min", date(2022, 5, 1))
     print(data)
     # data = collect_overview()
     # data = data.items()

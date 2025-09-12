@@ -36,7 +36,7 @@ class OHLCV(BaseModel):
 
         return {keymap.get(k, k): v for k, v in v.items()}
 
-class TimeSeriesDailyResult(Result):
+class TimeSeriesResult(Result):
     meta_data: Dict[str, str] = Field(default_factory=Dict, alias="Meta Data")
     time_series: Dict[str, OHLCV] = Field(default_factory=dict)
 

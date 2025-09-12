@@ -2,14 +2,14 @@ from pydantic import BaseModel
 from typing import Any
 from src.stock_solver.dataset.apis.alpha_vantage.results import Result
 
-class AlphaVantageNewsTickerSentiment(BaseModel):
+class NewsTickerSentiment(BaseModel):
     ticker: str
     relevance_score: str
     ticker_sentiment_score: str
     ticker_sentiment_label: str
 
 class NewsFeedItem(BaseModel):
-    ticker_sentiment: list[AlphaVantageNewsTickerSentiment]
+    ticker_sentiment: list[NewsTickerSentiment]
 
 class NewsResult(Result):
     items: int = 0
