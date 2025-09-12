@@ -14,11 +14,11 @@ For example, some that caught my eye are the news sentiment and insider trades. 
 
 ## Current Progress
 
-### [ ] Alpha Vantage API Wrapper
-    - [x] Time Series (Intraday, day, week, month)
-    - [x] News sentiment 
-    - [x] Insider Trades
+### Alpha Vantage API Wrapper
+- [x] Time Series (Intraday, day, week, month)
+- [x] News sentiment 
+- [x] Insider Trades
 
-### [ ] Torch Dataset
+### Torch Dataset
     
-### [ ] Model
+### Model
