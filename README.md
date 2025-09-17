@@ -20,5 +20,7 @@ For example, some that caught my eye are the news sentiment and insider trades. 
 - [x] Insider Trades
 
 ### Torch Dataset
-    
+
 ### Model
+    Informer Architecture with ProbSparse Attention, maybe somehow using exogenous features
+
