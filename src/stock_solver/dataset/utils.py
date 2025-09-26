@@ -1,12 +1,18 @@
 import os
 from typing import NamedTuple
+from datetime import datetime
 
 from dotenv import load_dotenv
 import src.stock_solver.dataset.apis.alpha_vantage as AV
 import pandas as pd
+import numpy as np
 
 from contextlib import contextmanager
 import time
+
+from joblib import Memory # type: ignore
+
+memory = Memory(".alpha_vantage_cache", verbose=0)
 
 @contextmanager
 def tmark(label: str):
@@ -36,35 +42,75 @@ def api_keys() -> API_KEYS:
     )
 
 
+@memory.cache # type: ignore
 def fetch_daily_OHLCV(symbol: str) -> pd.DataFrame:
-    with tmark("request"):
-        response = AV.TimeSeriesDailyRequest(symbol=symbol).query()
-    with tmark("parsing"):
-        result = AV.TimeSeriesResult.parse(response.json())
+    response = AV.TimeSeriesDailyRequest(symbol=symbol).query()
+    result = AV.TimeSeriesResult.parse(response.json())
 
-    with tmark("build_dataframe"):
-        raw = {ts_str: ohlcv.model_dump() for ts_str, ohlcv in result.time_series.items()}
-        if not raw:
-            print(f"Daily Time Series for {symbol} are missing, skipping.")        
-            raise AV.APIError()
-        
-        df = pd.DataFrame.from_dict(raw, orient="index")
+    raw = {ts_str: ohlcv.model_dump() for ts_str, ohlcv in result.time_series.items()}
+    if not raw:
+        print(f"Daily Time Series for {symbol} are missing, skipping.")        
+        raise AV.APIError()
+    
+    df = pd.DataFrame.from_dict(raw, orient="index")
 
-    with tmark("indexing"):
-        idx = pd.to_datetime(df.index, errors="coerce")
-        df.index = idx
-        df.index.name = "date"
-        df = df.sort_index()
+    idx = pd.to_datetime(df.index, errors="coerce")
+    df.index = idx
+    df.index.name = "date"
+    df = df.sort_index()
 
     for col in ("open", "high", "low", "close", "adjusted_close"):
         df[col] = pd.to_numeric(df[col], errors='coerce').astype('float32')
     df["volume"] = pd.to_numeric(df["volume"], errors='coerce').astype('int64')
 
-    # print(df.info())
-    # print(df)
     return df
 
 
+# @memory.cache # type: ignore
+def fetch_news_sentiment(symbol: str, time_from: datetime, time_to: datetime) -> pd.DataFrame:
+    # FIXME: News are not returned fully. No nes are for the latest year, increasing limit to 10_000 returns less news somehoww
+    response = AV.NewsRequest(tickers=[symbol], time_from=time_from, time_to=time_to, limit=1000).query()
+    result = AV.NewsResult.parse(response.json())
+
+    raw = {}
+    for item in result.feed:
+        ticker_match = next((x for x in item.ticker_sentiment if x.ticker == symbol))
+        raw[item.time_published] = ticker_match.model_dump()
+        
+    df = pd.DataFrame.from_dict(raw, orient="index")
+    df = df.drop(columns=["ticker_sentiment_label"])
+    for col in ("relevance_score", "ticker_sentiment_score"):
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype('float32')
+        
+    return df
+
+# FIXME:
+def aggregate_news_sentiment(raw: pd.DataFrame) -> pd.DataFrame:
+    dates = pd.to_datetime(raw.index.str[:8], format="%Y%m%d", errors="coerce") 
+
+    work = pd.DataFrame({
+        "date": dates,
+        "relevance_score": raw["relevance_score"],
+        "ticker_sentiment_score": raw["ticker_sentiment_score"]
+    })        
+
+    work["wx"] = work["relevance_score"] * work["ticker_sentiment_score"]
+    g = work.groupby("date", sort=True)
+    rel_sum = g["relevance_score"].sum()
+    wsum = g["wx"].sum()
+    count = g.size()
+
+    out = pd.DataFrame({
+        "news_count": count.astype("int32"),
+        "news_rel_sum": rel_sum.astype("float32"),
+        "news_sent_wsum": wsum.astype("float32"),
+    })
+
+    out.index.name = "date"
+    return out.sort_index()
+        
+
+        
 if __name__ == '__main__':
     tickers = [
     "AAPL",
@@ -80,7 +126,5 @@ if __name__ == '__main__':
     "JPM"
     ]
 
-    
-    print(f"avg #rows = {sum(len(fetch_daily_OHLCV(ticker).index) for ticker in tickers) / len(tickers)}")
-    # for ticker in tickers:
-    #     print(f'start day for {ticker} is {min(fetch_daily_OHLCV(ticker).index)}') 
+    min_date = datetime(1999, 11, 1)
+    print(aggregate_news_sentiment(fetch_news_sentiment(symbol=tickers[0], time_from=min_date, time_to=datetime.now())))
