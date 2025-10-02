@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 @dataclass
 class WindowIndex:
@@ -12,7 +12,7 @@ class WindowIndex:
     start: int
 
 
-class MultiTickerDataset(torch.utils.data.Dataset):
+class MultiTickerDataset(torch.utils.data.Dataset[Tuple[torch.Tensor, torch.Tensor, int]]):
     feature_cols: List[str] = ["open", "high", "low", "adjusted_close",]
     target_col: str = "close"
     # TODO: Known features: Holidays, Day of the Week, Month of the year, etc
@@ -40,7 +40,7 @@ class MultiTickerDataset(torch.utils.data.Dataset):
     def __len__(self) -> int:
         return len(self.win)
     
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, int]:
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, int]:
         # TODO: add normalization here
         window = self.win[idx]
         ticker_id, start = window.ticker_id, window.start
