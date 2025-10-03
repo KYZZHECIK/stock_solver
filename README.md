@@ -16,7 +16,7 @@ Toy project to predict and analyze stock market. Currently under active developm
 - [x] **Data access**:
     - [x] [Time Series endpoint](https://www.alphavantage.co/documentation/#daily)
     - [x] [News Sentiment endpoint](https://www.alphavantage.co/documentation/#news-sentiment)
-    - [x] [Insider Transactions](https://www.alphavantage.co/documentation/#insider-transactions)
+    - [x] [Insider Transactions endpoint](https://www.alphavantage.co/documentation/#insider-transactions)
 - [ ] **Populating the Dataset**:
     - [x] Basic preprocessing and aggregation of the features
     - [ ] Per-ticker normalization
