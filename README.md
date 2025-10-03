@@ -1,24 +1,53 @@
 # Stock Solver
-Toy project to predict and analyze stock market
+[![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Project Status](https://img.shields.io/badge/status-in%20development-orange)](#current-progress)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](pyproject.toml)
+
+Toy project to predict and analyze stock market. Currently under active development. The pipeline covers data collection, dataset construction, and an Informer-based model built with PyTorch. All components are implemented from scratch for learning purposes.
 
 ---
 
-# Roadmap
+# Overview and Goals
 
-I want to build a dataset for daily closing price prediction. For that, first I will implement an API wrapper for Alpha Vantage endpoints.
-Using the responses from the API, we can start building the dataset. Using the Time Series endpoints
-(for example intra day, dayly, weekly, and monthly) we can build the most basic feature set. From that, we can also obtain our target
-values (closing price, for example, at the end of the day). Additionally, we can use additional information that API provides.
-For example, some that caught my eye are the news sentiment and insider trades. Maybe, later on we could include some additional features.
-
+- **Data** - We collect data from [Alpha Vantage](https://www.alphavantage.co/) via a simple API wrapper we implemented. We collect daily time series (OCHLV values), new sentiment scores, and insider trading data for selected tickers. We combine everything into a neat PyTorch Dataset.
+- **Model** - We wanted to implement a Deep Learning model for predicting Closing Prices few days into the future. Since, this is a Seq2Seq problem, we landed on using Transformer architecture, more specifically an Informer architecture introduced in this [paper](https://arxiv.org/abs/2012.07436). This could be not the state-of-the-art approach, but for the sake of this scope, we think this is a great choice.
 
 ## Current Progress
+- [x] **Data access**:
+    - [x] [Time Series endpoint](https://www.alphavantage.co/documentation/#daily)
+    - [x] [News Sentiment endpoint](https://www.alphavantage.co/documentation/#news-sentiment)
+    - [x] [Insider Transactions](https://www.alphavantage.co/documentation/#insider-transactions)
+- [ ] **Populating the Dataset**:
+    - [x] Basic preprocessing and aggregation of the features
+    - [ ] Per-ticker normalization
+- [ ] **Model Implementation**:
+    - [ ] Encoder
+    - [ ] Decoder
+    - [ ] Distillation
+    - [x] ProbSparse Attention
+- [ ] **Model Evaluation**:
 
-### Alpha Vantage API Wrapper
-- [x] Time Series (Intraday, day, week, month)
-- [x] News sentiment 
-- [x] Insider Trades
 
-### Torch Dataset
-    
-### Model
+## Getting Started
+1. Clone the repository
+``` bash
+https://github.com/KYZZHECIK/stock_solver.git
+cd stock_solver
+```
+
+2. Install dependencies ([Poetry](https://python-poetry.org/docs/) recommended)
+``` bash
+poetry install
+```
+
+3. Set environment variables (For accessing the APIs).
+    - Create a `.env` file containing your Alpha Vantage API key.
+    ``` bash
+    export ALPHA_VANTAGE_API_KEY="your_key"
+    ```
+
+4. Run
+    - **TODO**
+
+---
+**License:** [MIT](LICENSE)
