@@ -69,7 +69,6 @@ def fetch_news_sentiment(symbol: str, time_from: datetime, time_to: datetime) ->
             limit=NEWS_LIMIT_PER_REQUEST
         ).query()
         result = AV.NewsResult.parse(response.json())
-        print(f"DEBUG | {start} to {end} we got {result.items} articles.")
 
         # Each item in the feed has a list of tickers that are mentioned in the article,
         # this way we are extracting the ticker that we need
@@ -129,4 +128,3 @@ if __name__ == '__main__':
 
     min_date = datetime(2021, 9, 1)
     df = aggregate_news_sentiment(fetch_news_sentiment(symbol=tickers[0], time_from=min_date, time_to=datetime.now()))
-    df.to_csv("output.csv")    
