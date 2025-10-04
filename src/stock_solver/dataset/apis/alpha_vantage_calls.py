@@ -1,14 +1,15 @@
-from datetime import date, datetime, timedelta
-from typing import Generator, Dict
+from datetime import datetime, timedelta
+from typing import Generator, Dict, Any
 
 from joblib import Memory # type: ignore
-from tqdm import tqdm
 import pandas as pd
-from src.stock_solver.dataset.apis.alpaca import get_assets
 
 import stock_solver.dataset.apis.alpha_vantage as AV
 
 TICKERS_LIMIT = 500
+TIME_STEP = timedelta(days=1)
+NEWS_LIMIT_PER_REQUEST = 1000
+
 memory = Memory(".alpha_vantage_cache", verbose=0)
 
 
@@ -57,17 +58,25 @@ def fetch_daily_OHLCV(symbol: str) -> pd.DataFrame:
     return df
 
 
-# @memory.cache # type: ignore
+@memory.cache # type: ignore
 def fetch_news_sentiment(symbol: str, time_from: datetime, time_to: datetime) -> pd.DataFrame:
-    # FIXME: News are not returned fully. No nes are for the latest year, increasing limit to 10_000 returns less news somehoww
-    response = AV.NewsRequest(tickers=[symbol], time_from=time_from, time_to=time_to, limit=1000).query()
-    result = AV.NewsResult.parse(response.json())
+    raw: Dict[str, Any] = {}
+    for start, end in time_iterator(time_from, time_to, TIME_STEP):
+        response = AV.NewsRequest(
+            tickers=[symbol],
+            time_from=start,
+            time_to=end,
+            limit=NEWS_LIMIT_PER_REQUEST
+        ).query()
+        result = AV.NewsResult.parse(response.json())
+        print(f"DEBUG | {start} to {end} we got {result.items} articles.")
 
-    raw = {}
-    for item in result.feed:
-        ticker_match = next((x for x in item.ticker_sentiment if x.ticker == symbol))
-        raw[item.time_published] = ticker_match.model_dump()
-        
+        # Each item in the feed has a list of tickers that are mentioned in the article,
+        # this way we are extracting the ticker that we need
+        for item in result.feed:
+            ticker_match = next((x for x in item.ticker_sentiment if x.ticker == symbol))
+            raw[item.time_published] = ticker_match.model_dump()
+
     df = pd.DataFrame.from_dict(raw, orient="index")
     df = df.drop(columns=["ticker_sentiment_label"])
     for col in ("relevance_score", "ticker_sentiment_score"):
@@ -75,7 +84,8 @@ def fetch_news_sentiment(symbol: str, time_from: datetime, time_to: datetime) ->
         
     return df
 
-# FIXME:
+
+@memory.cache # type: ignore
 def aggregate_news_sentiment(raw: pd.DataFrame) -> pd.DataFrame:
     dates = pd.to_datetime(raw.index.str[:8], format="%Y%m%d", errors="coerce") 
 
@@ -117,5 +127,6 @@ if __name__ == '__main__':
     "JPM"
     ]
 
-    min_date = datetime(1999, 11, 1)
-    print(aggregate_news_sentiment(fetch_news_sentiment(symbol=tickers[0], time_from=min_date, time_to=datetime.now())))
+    min_date = datetime(2021, 9, 1)
+    df = aggregate_news_sentiment(fetch_news_sentiment(symbol=tickers[0], time_from=min_date, time_to=datetime.now()))
+    df.to_csv("output.csv")    

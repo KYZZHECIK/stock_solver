@@ -1,11 +1,6 @@
 import os
 from typing import NamedTuple
-from datetime import datetime
-
 from dotenv import load_dotenv
-import src.stock_solver.dataset.apis.alpha_vantage as AV
-import pandas as pd
-import numpy as np
 
 from contextlib import contextmanager
 import time
