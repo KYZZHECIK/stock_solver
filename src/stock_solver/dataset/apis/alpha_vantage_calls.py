@@ -3,11 +3,12 @@ from typing import Generator, Dict, Any
 
 from joblib import Memory # type: ignore
 import pandas as pd
+from tqdm import tqdm
 
 import stock_solver.dataset.apis.alpha_vantage as AV
 
 TICKERS_LIMIT = 500
-TIME_STEP = timedelta(days=1)
+TIME_STEP = timedelta(weeks=1)
 NEWS_LIMIT_PER_REQUEST = 1000
 
 memory = Memory(".alpha_vantage_cache", verbose=0)
@@ -45,23 +46,24 @@ def fetch_daily_OHLCV(symbol: str) -> pd.DataFrame:
         raise AV.APIError()
     
     df = pd.DataFrame.from_dict(raw, orient="index")
-
     idx = pd.to_datetime(df.index, errors="coerce")
     df.index = idx
     df.index.name = "date"
     df = df.sort_index()
-
     for col in ("open", "high", "low", "close", "adjusted_close"):
         df[col] = pd.to_numeric(df[col], errors='coerce').astype('float32')
     df["volume"] = pd.to_numeric(df["volume"], errors='coerce').astype('int64')
-
     return df
 
 
 @memory.cache # type: ignore
 def fetch_news_sentiment(symbol: str, time_from: datetime, time_to: datetime) -> pd.DataFrame:
     raw: Dict[str, Any] = {}
-    for start, end in time_iterator(time_from, time_to, TIME_STEP):
+    for start, end in tqdm(
+        time_iterator(time_from, time_to, TIME_STEP),
+        total=time_iterator_len(time_from, time_to, TIME_STEP),
+        desc=f"{symbol} news collection"
+        ):
         response = AV.NewsRequest(
             tickers=[symbol],
             time_from=start,
@@ -75,43 +77,59 @@ def fetch_news_sentiment(symbol: str, time_from: datetime, time_to: datetime) ->
         for item in result.feed:
             ticker_match = next((x for x in item.ticker_sentiment if x.ticker == symbol))
             raw[item.time_published] = ticker_match.model_dump()
-
     df = pd.DataFrame.from_dict(raw, orient="index")
     df = df.drop(columns=["ticker_sentiment_label"])
     for col in ("relevance_score", "ticker_sentiment_score"):
         df[col] = pd.to_numeric(df[col], errors="coerce").astype('float32')
-        
     return df
 
 
 @memory.cache # type: ignore
 def aggregate_news_sentiment(raw: pd.DataFrame) -> pd.DataFrame:
     dates = pd.to_datetime(raw.index.str[:8], format="%Y%m%d", errors="coerce") 
-
     work = pd.DataFrame({
         "date": dates,
         "relevance_score": raw["relevance_score"],
         "ticker_sentiment_score": raw["ticker_sentiment_score"]
     })        
-
     work["wx"] = work["relevance_score"] * work["ticker_sentiment_score"]
     g = work.groupby("date", sort=True)
     rel_sum = g["relevance_score"].sum()
     wsum = g["wx"].sum()
     count = g.size()
-
     out = pd.DataFrame({
         "news_count": count.astype("int32"),
         "news_rel_sum": rel_sum.astype("float32"),
         "news_sent_wsum": wsum.astype("float32"),
     })
-
     out.index.name = "date"
     return out.sort_index()
         
 
+@memory.cache # type: ignore
+def build_features_for_ticker(symbol:str) -> pd.DataFrame:
+    time_series_df = fetch_daily_OHLCV(symbol)
+    min_date = time_series_df.index.min()
+    news_df = fetch_news_sentiment(symbol, min_date, datetime.today())
+    news_cols = news_df.columns
+
+    # FIXME
+    time_series_df.join(news_df, how="left")
+    time_series_df[news_cols] = time_series_df[news_cols].fillna(0.0)
+    
+    # print(f"| DEBUG |")
+    # print(f"{time_series_df}")
+    # print(f"| DEBUG |")
+    # print(f"{news_df}")
+    # print(f"| DEBUG |")
+    # print(f"{time_series_df}")
+    # print(f"| DEBUG |")
+    
+    return time_series_df
+
         
 if __name__ == '__main__':
+    # TODO: get the tickers via get_assets, get a useful subset
     tickers = [
     "AAPL",
     "MSFT",
@@ -126,5 +144,4 @@ if __name__ == '__main__':
     "JPM"
     ]
 
-    min_date = datetime(2021, 9, 1)
-    df = aggregate_news_sentiment(fetch_news_sentiment(symbol=tickers[0], time_from=min_date, time_to=datetime.now()))
+    build_features_for_ticker("TSLA")
