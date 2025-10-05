@@ -25,6 +25,7 @@ Toy project to predict and analyze stock market. Currently under active developm
     - [ ] Decoder
     - [ ] Distillation
     - [x] ProbSparse Attention
+    - [ ] Embedding
 - [ ] **Model Evaluation**:
 
 
@@ -43,11 +44,8 @@ poetry install
 3. Set environment variables (For accessing the APIs).
     - Create a `.env` file containing your Alpha Vantage API key.
     ``` bash
-    export ALPHA_VANTAGE_API_KEY="your_key"
+    ALPHA_VANTAGE_API_KEY="your_key"
     ```
 
 4. Run
     - **TODO**
-
----
-**License:** [MIT](LICENSE)

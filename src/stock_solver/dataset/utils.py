@@ -1,7 +1,20 @@
 import os
 from typing import NamedTuple
-
 from dotenv import load_dotenv
+
+from contextlib import contextmanager
+import time
+
+from joblib import Memory # type: ignore
+
+memory = Memory(".alpha_vantage_cache", verbose=0)
+
+@contextmanager
+def tmark(label: str):
+    t0 = time.perf_counter()
+    yield
+    dt = time.perf_counter() - t0
+    print(f"time [{label}]: {dt:.4f}s")
 
 
 class API_KEYS(NamedTuple):

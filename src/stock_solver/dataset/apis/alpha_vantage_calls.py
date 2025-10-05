@@ -1,77 +1,17 @@
-from datetime import date, datetime, timedelta
-from typing import Generator, Dict
+from datetime import datetime, timedelta
+from typing import Generator, Dict, Any
 
 from joblib import Memory # type: ignore
+import pandas as pd
 from tqdm import tqdm
-
-from src.stock_solver.dataset.apis.alpaca import get_assets
 
 import stock_solver.dataset.apis.alpha_vantage as AV
 
 TICKERS_LIMIT = 500
+TIME_STEP = timedelta(weeks=1)
+NEWS_LIMIT_PER_REQUEST = 1000
+
 memory = Memory(".alpha_vantage_cache", verbose=0)
-
-# @memory.cache
-def collect_overview(symbols:list[str]):
-    data: Dict[str, Dict[str, str]] = {}
-    for s in tqdm(symbols):
-        request = AV.OverviewRequest(symbol=s)
-        try:
-            result = request.query()
-        except ValueError:
-            print(f"Failed to fetch overview for {s}, skipping.")
-            continue
-        if j := result.json():
-            data[s] = j
-    return data
-
-
-# @memory.cache
-def collect_insider_transactions(symbols: list[str]):
-    data: Dict[str, AV.InsiderTransactionsResult] = {}
-    for symbol in tqdm(symbols):
-        request = AV.InsiderTransactionsRequest(symbol=symbol)
-        try: 
-            response = request.query()
-        except ValueError:
-            print(f"Failed to fetch insider transactions for {symbol}, skipping.")
-            continue
-        transactions = response.json()
-        result = AV.InsiderTransactionsResult.parse(transactions)
-        data[symbol] = result
-    return data
-
-
-# @memory.cache
-def collect_timeseries_day(symbols: list[str]):
-    data: dict[str, AV.TimeSeriesResult] = {}
-    for symbol in tqdm(symbols):
-        request = AV.TimeSeriesDailyRequest(symbol=symbol)
-        try:
-            response = request.query()
-        except ValueError:
-            print(f"Failed to fetch timeseries daily for {symbol}, skipping.")
-            continue
-        timeseries = response.json()
-        result = AV.TimeSeriesResult.parse(timeseries)
-        data[symbol] = result
-    return data
-
-
-# @memery.cache
-def collect_timeseries_intraday(symbols: list[str], interval: AV.Interval, month: date):
-    data: dict[str, AV.TimeSeriesResult] = {}
-    for symbol in tqdm(symbols):
-        request = AV.TimeSeriesIntradayRequest(symbol=symbol, interval=interval, month=month)
-        try: 
-            response = request.query()
-        except ValueError:
-            print(f"Failed to fetch timeseries intradaily for {symbol}, skipping.")
-            continue
-        timeseries = response.json()
-        result = AV.TimeSeriesResult.parse(timeseries)
-        data[symbol] = result
-    return data
 
 
 def time_iterator(
@@ -94,59 +34,107 @@ def time_iterator_len(start: datetime, end: datetime, step: timedelta) -> int:
     return count
 
 
-# @memory.cache
-def collect_news(tickers: list[str]):
-    TIME_STEP = timedelta(days=30)
-    START_TIME = datetime(year=2023, month=1, day=1)
-    END_TIME = datetime.now()
-    tickers = tickers[: TICKERS_LIMIT]
-    assert len(tickers) <= TICKERS_LIMIT
 
-    news: list[AV.NewsFeedItem] = []
+@memory.cache # type: ignore
+def fetch_daily_OHLCV(symbol: str) -> pd.DataFrame:
+    response = AV.TimeSeriesDailyRequest(symbol=symbol).query()
+    result = AV.TimeSeriesResult.parse(response.json())
 
-    length = time_iterator_len(START_TIME, END_TIME, TIME_STEP)
-    for start, end in tqdm(time_iterator(START_TIME, END_TIME, TIME_STEP), total=length):
-        request = AV.NewsRequest(
-            tickers=tickers,    # FIXME, trying to find articles with ALL the tickers inside, 
-            time_from=start,    # which is pretty much impossible with 500+ tickers.
-            time_to=end,        # Consider switching to news per ticket
-            limit=1000,
-        )
-        try:
-            response = request.query()
-            data = response.json()
-            result = AV.NewsResult.parse(data)
-            news.extend(result.feed)
-        except ValueError:
-            print(f"Failed to fetch news for {tickers} from {start} till {end}, skipping.")
-    return news
-
-
-def get_news(symbol: str, time_from: datetime, time_to: datetime):
-    request = AV.NewsRequest(
-        tickers=[symbol], time_from=time_from, time_to=time_to, limit=1000
-    )
-    response = request.query()
-    data = response.json()
-    result = AV.NewsResult.parse(data)
-    return result
-
-if __name__ == "__main__":
-    data = collect_timeseries_intraday(["IBM"], "60min", date(2022, 5, 1))
-    print(data)
-    # data = collect_overview()
-    # data = data.items()
-    # data = list(
-    #     filter(
-    #         lambda kv: "MarketCapitalization" in kv[1].keys()
-    #         and kv[1]["MarketCapitalization"] != "None",
-    #         data,
-    #     )
-    # )
-    # data = [(k, int(v["MarketCapitalization"])) for k, v in data]
-    # data = sorted(data, key=lambda x: x[1], reverse=True)
-    # tickers = [k for k, _ in data]
-    # print(tickers)
-    # news = collect_news(tickers=tickers)
-    # print(news)
+    raw = {ts_str: ohlcv.model_dump() for ts_str, ohlcv in result.time_series.items()}
+    if not raw:
+        print(f"Daily Time Series for {symbol} are missing, skipping.")        
+        raise AV.APIError()
     
+    df = pd.DataFrame.from_dict(raw, orient="index")
+    idx = pd.to_datetime(df.index, errors="coerce")
+    df.index = idx
+    df.index.name = "date"
+    df = df.sort_index()
+    for col in ("open", "high", "low", "close", "adjusted_close"):
+        df[col] = pd.to_numeric(df[col], errors='coerce').astype('float32')
+    df["volume"] = pd.to_numeric(df["volume"], errors='coerce').astype('int64')
+    return df
+
+
+@memory.cache # type: ignore
+def fetch_news_sentiment(symbol: str, time_from: datetime, time_to: datetime) -> pd.DataFrame:
+    raw: Dict[str, Any] = {}
+    for start, end in tqdm(
+        time_iterator(time_from, time_to, TIME_STEP),
+        total=time_iterator_len(time_from, time_to, TIME_STEP),
+        desc=f"{symbol} news collection"
+        ):
+        response = AV.NewsRequest(
+            tickers=[symbol],
+            time_from=start,
+            time_to=end,
+            limit=NEWS_LIMIT_PER_REQUEST
+        ).query()
+        result = AV.NewsResult.parse(response.json())
+
+        # Each item in the feed has a list of tickers that are mentioned in the article,
+        # this way we are extracting the ticker that we need
+        for item in result.feed:
+            ticker_match = next((x for x in item.ticker_sentiment if x.ticker == symbol))
+            raw[item.time_published] = ticker_match.model_dump()
+    df = pd.DataFrame.from_dict(raw, orient="index")
+    df = df.drop(columns=["ticker_sentiment_label"])
+    for col in ("relevance_score", "ticker_sentiment_score"):
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype('float32')
+    return df
+
+
+@memory.cache # type: ignore
+def aggregate_news_sentiment(raw: pd.DataFrame) -> pd.DataFrame:
+    dates = pd.to_datetime(raw.index.str[:8], format="%Y%m%d", errors="coerce") 
+    work = pd.DataFrame({
+        "date": dates,
+        "relevance_score": raw["relevance_score"],
+        "ticker_sentiment_score": raw["ticker_sentiment_score"]
+    })        
+    work["wx"] = work["relevance_score"] * work["ticker_sentiment_score"]
+    g = work.groupby("date", sort=True)
+    rel_sum = g["relevance_score"].sum()
+    wsum = g["wx"].sum()
+    count = g.size()
+    out = pd.DataFrame({
+        "news_count": count.astype("int32"),
+        "news_rel_sum": rel_sum.astype("float32"),
+        "news_sent_wsum": wsum.astype("float32"),
+    })
+    out.index.name = "date"
+    return out.sort_index()
+        
+
+@memory.cache # type: ignore
+def build_features_for_ticker(symbol:str) -> pd.DataFrame:
+    time_series_df = fetch_daily_OHLCV(symbol)
+    min_date = time_series_df.index.min()
+
+    news_df = fetch_news_sentiment(symbol, min_date, datetime.today())
+    news_df = aggregate_news_sentiment(news_df)
+    news_cols = news_df.columns
+
+    # We get NaNs when performing the join on missing entries for news
+    time_series_df = time_series_df.join(news_df, how="left") 
+    time_series_df[news_cols] = time_series_df[news_cols].fillna(0.0)
+    return time_series_df
+
+        
+if __name__ == '__main__':
+    # TODO: get the tickers via get_assets, get a useful subset
+    tickers = [
+    "AAPL",
+    "MSFT",
+    "AMZN",
+    "GOOG",
+    "GOOGL",
+    "META",
+    "NVDA",
+    "TSLA",
+    "NFLX",
+    "AMD",
+    "JPM"
+    ]
+
+    build_features_for_ticker("TSLA")

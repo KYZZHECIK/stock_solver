@@ -9,6 +9,7 @@ class NewsTickerSentiment(BaseModel):
     ticker_sentiment_label: str
 
 class NewsFeedItem(BaseModel):
+    time_published: str
     ticker_sentiment: list[NewsTickerSentiment]
 
 class NewsResult(Result):
