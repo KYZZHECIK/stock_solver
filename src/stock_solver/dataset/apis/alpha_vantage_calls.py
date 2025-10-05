@@ -110,21 +110,14 @@ def aggregate_news_sentiment(raw: pd.DataFrame) -> pd.DataFrame:
 def build_features_for_ticker(symbol:str) -> pd.DataFrame:
     time_series_df = fetch_daily_OHLCV(symbol)
     min_date = time_series_df.index.min()
+
     news_df = fetch_news_sentiment(symbol, min_date, datetime.today())
+    news_df = aggregate_news_sentiment(news_df)
     news_cols = news_df.columns
 
-    # FIXME
-    time_series_df.join(news_df, how="left")
+    # We get NaNs when performing the join on missing entries for news
+    time_series_df = time_series_df.join(news_df, how="left") 
     time_series_df[news_cols] = time_series_df[news_cols].fillna(0.0)
-    
-    # print(f"| DEBUG |")
-    # print(f"{time_series_df}")
-    # print(f"| DEBUG |")
-    # print(f"{news_df}")
-    # print(f"| DEBUG |")
-    # print(f"{time_series_df}")
-    # print(f"| DEBUG |")
-    
     return time_series_df
 
         
