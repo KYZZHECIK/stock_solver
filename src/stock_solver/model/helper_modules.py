@@ -40,6 +40,14 @@ class PositionalEmbedding(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.pe[:, :x.size(1), :]
 
-class TokenEmbedding(torch.nn.Module):
-    # TODO
-    ...
+class TickerEmbedding(torch.nn.Module):
+    def __init__(self, num_tickers: int, dim: int, dropout: float):
+        super().__init__() # type: ignore
+        self.embedding = torch.nn.Embedding(num_tickers, dim)
+        torch.nn.init.normal_(self.embedding.weight, std=0.3)
+        self.drop = torch.nn.Dropout(dropout)
+    
+    def forward(self, x: torch.Tensor, length: int) -> torch.Tensor:
+        embedding = self.embedding(x.view(-1))
+        embedding = embedding.unsqueeze(1).expand(-1, length, -1) # [B, L, D]
+        return self.drop(embedding)
