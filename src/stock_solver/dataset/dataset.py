@@ -39,13 +39,10 @@ class MultiTickerDataset(torch.utils.data.Dataset[Tuple[torch.Tensor, torch.Tens
 
     @staticmethod
     def _date_mark(idx: pd.DatetimeIndex) -> torch.Tensor:
-        iso = idx.isocalendar()
         month = idx.month.values
         day = idx.day.values
         weekday = idx.weekday.values
-        week = iso.week.values
-
-        mark = np.stack([month, day, weekday, week], axis=1)
+        mark = np.stack([month, day, weekday], axis=1)
         return torch.from_numpy(mark)
  
     def __len__(self) -> int:
