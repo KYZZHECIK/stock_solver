@@ -7,7 +7,6 @@ class PositionalEmbedding(torch.nn.Module):
     def __init__(self, dim: int, len: int):
         super().__init__() # type: ignore
         pe = torch.zeros(len, dim).float()
-        pe.requires_grad = False
         pos = torch.arange(len).float().unsqueeze(1)
         div = torch.exp(torch.arange(0, dim, 2) * (-log(10000) / dim))
         pe[:, 0::2] = torch.sin(pos * div)
@@ -22,7 +21,7 @@ class TickerEmbedding(torch.nn.Module):
     def __init__(self, num_tickers: int, dim: int, dropout: float):
         super().__init__() # type: ignore
         self.embedding = torch.nn.Embedding(num_tickers, dim)
-        torch.nn.init.normal_(self.embedding.weight, std=0.3)
+        torch.nn.init.normal_(self.embedding.weight, std=0.2)
         self.drop = torch.nn.Dropout(dropout)
     
     def forward(self, ticker_ids: torch.Tensor, length: int) -> torch.Tensor:
@@ -83,6 +82,7 @@ class DataEmbedding(torch.nn.Module):
             dropout: float,
             max_seq_len: int,
         ):
+        super().__init__() # type: ignore
         self.positional_embedding = PositionalEmbedding(model_dim, max_seq_len)
         self.value_embedding = ValueEmbedding(value_dim_in, model_dim)
         self.ticker_embedding = TickerEmbedding(num_tickers=num_tickers, dim=model_dim, dropout=dropout)
@@ -91,9 +91,11 @@ class DataEmbedding(torch.nn.Module):
 
     
     def forward(self, x: torch.Tensor, ticker_ids: torch.Tensor, x_marks: torch.Tensor) -> torch.Tensor:
-        return (
+        L = x.size(1)
+        out = (
             self.positional_embedding(x)
             + self.value_embedding(x)
-            + self.ticker_embedding(ticker_ids)
+            + self.ticker_embedding(ticker_ids, L)
             + self.temporal_embedding(x_marks)
         )
+        return out
