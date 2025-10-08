@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Generator, Dict, Any
+from typing import Generator, Dict, List, Any
 
 from joblib import Memory # type: ignore
 import pandas as pd
@@ -34,10 +34,9 @@ def time_iterator_len(start: datetime, end: datetime, step: timedelta) -> int:
     return count
 
 
-
 @memory.cache # type: ignore
 def fetch_daily_OHLCV(symbol: str) -> pd.DataFrame:
-    response = AV.TimeSeriesDailyRequest(symbol=symbol).query()
+    response = AV.TimeSeriesDailyRequest(symbol=symbol, outputsize="compact").query()
     result = AV.TimeSeriesResult.parse(response.json())
 
     raw = {ts_str: ohlcv.model_dump() for ts_str, ohlcv in result.time_series.items()}
@@ -104,7 +103,7 @@ def aggregate_news_sentiment(raw: pd.DataFrame) -> pd.DataFrame:
     })
     out.index.name = "date"
     return out.sort_index()
-        
+
 
 @memory.cache # type: ignore
 def build_features_for_ticker(symbol:str) -> pd.DataFrame:
@@ -120,21 +119,7 @@ def build_features_for_ticker(symbol:str) -> pd.DataFrame:
     time_series_df[news_cols] = time_series_df[news_cols].fillna(0.0)
     return time_series_df
 
-        
-if __name__ == '__main__':
-    # TODO: get the tickers via get_assets, get a useful subset
-    tickers = [
-    "AAPL",
-    "MSFT",
-    "AMZN",
-    "GOOG",
-    "GOOGL",
-    "META",
-    "NVDA",
-    "TSLA",
-    "NFLX",
-    "AMD",
-    "JPM"
-    ]
 
-    build_features_for_ticker("TSLA")
+@memory.cache
+def populate_dataset(symbols: List[str]) -> Dict[str, pd.DataFrame]:
+    return {symbol: build_features_for_ticker(symbol) for symbol in tqdm(symbols, total=len(symbols), desc=f"Processing the tickers.")}
