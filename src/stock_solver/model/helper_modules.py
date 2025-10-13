@@ -22,7 +22,7 @@ class Distillation(torch.nn.Module):
             torch.nn.Conv1d(model_dim, model_dim, 3, padding=1, padding_mode="circular"),
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.ELU(),
-            torch.nn.MaxPool1d(kernel_size=3, stride=1, padding=1)
+            torch.nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -49,3 +49,9 @@ class EncoderLayer(torch.nn.Module):
         y = self.ffn(x)
         x = self.norm2(x + y)
         return x
+ 
+
+class DecoderLayer(torch.nn.Module):
+    def __init__(self):
+        super().__init__() # type: ignore
+        
