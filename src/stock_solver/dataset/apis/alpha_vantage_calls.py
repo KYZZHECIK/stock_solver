@@ -149,7 +149,7 @@ def populate_dataset(symbols: List[str]) -> Dict[str, pd.DataFrame]:
     return {symbol: build_features_for_ticker(symbol) for symbol in tqdm(symbols, total=len(symbols), desc=f"Processing the tickers.")}
 
 
-def save_dataset(data: Dict[str, pd.DataFrame], root: str = ".alpha_vantage_cache", folder: str = "dataset"):
+def save_data(data: Dict[str, pd.DataFrame], root: str = ".alpha_vantage_cache", folder: str = "dataset"):
     path = Path(root) / folder
     path.mkdir(parents=True, exist_ok=True)
 
@@ -170,7 +170,7 @@ def save_dataset(data: Dict[str, pd.DataFrame], root: str = ".alpha_vantage_cach
     (path / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         
 
-def load_dataset(root: str = ".alpha_vantage_cache", folder: str = "dataset") -> Dict[str, pd.DataFrame]:
+def load_data(root: str = ".alpha_vantage_cache", folder: str = "dataset") -> Dict[str, pd.DataFrame]:
     path = Path(root) / folder
     manifest_path = path / "manifest.json"
 
@@ -195,5 +195,5 @@ if __name__ == '__main__':
     # "META",
     ]
     # memory.clear(warn=False)
-    save_dataset(populate_dataset(tickers))
+    save_data(populate_dataset(tickers))
 
