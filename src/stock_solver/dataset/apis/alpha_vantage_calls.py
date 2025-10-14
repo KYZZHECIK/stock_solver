@@ -170,7 +170,6 @@ def save_dataset(data: Dict[str, pd.DataFrame], root: str = ".alpha_vantage_cach
     (path / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         
 
-@memory.cache
 def load_dataset(root: str = ".alpha_vantage_cache", folder: str = "dataset") -> Dict[str, pd.DataFrame]:
     path = Path(root) / folder
     manifest_path = path / "manifest.json"
