@@ -4,7 +4,6 @@ import numpy as np
 
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, TypeAlias
-from .apis.alpha_vantage_calls import populate_dataset
 
 TrainElement: TypeAlias = Tuple[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor], int]
 TestElement: TypeAlias = Tuple[Tuple[torch.Tensor, torch.Tensor], torch.Tensor, int]
@@ -70,7 +69,6 @@ class MultiTickerDataset(torch.utils.data.Dataset[Element]):
         return (x, enc_marks), dec_marks, ticker_id
 
 
-
 def collate(batch: List[Element]):
     xs, ys, ticker_ids, enc_marks, dec_marks = batch
     x = torch.stack(xs, dim=0)
@@ -82,16 +80,4 @@ def collate(batch: List[Element]):
 
 
 if __name__ == '__main__':
-    tickers = [
-    "AAPL",
-    "MSFT",
-    "AMZN",
-    "GOOG",
-    "GOOGL",
-    "META",
-    ]
-
-    data = populate_dataset(tickers)
-    dataset = MultiTickerDataset(data, 10, 2)
-    print(f"TEST | {dataset[0]}")
-
+    ...
