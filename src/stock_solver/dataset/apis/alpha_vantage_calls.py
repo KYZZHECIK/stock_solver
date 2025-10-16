@@ -8,11 +8,13 @@ import pandas as pd
 from tqdm import tqdm
 import json
 
+from .alpaca import get_assets
 import stock_solver.dataset.apis.alpha_vantage as AV
 
 TICKERS_LIMIT = 500
 TIME_STEP = timedelta(weeks=1)
 NEWS_LIMIT_PER_REQUEST = 1000
+MIN_MARKET_CAPITALIZATION = 1_000_000_000
 
 memory = Memory(".alpha_vantage_cache", verbose=0)
 
@@ -40,11 +42,8 @@ def time_iterator_len(start: datetime, end: datetime, step: timedelta) -> int:
 @memory.cache # type: ignore
 def fetch_daily_OHLCV(symbol: str) -> pd.DataFrame:
     response = AV.TimeSeriesDailyRequest(symbol=symbol, outputsize="full").query()
-    result = AV.TimeSeriesResult.parse(response.json())
+    result = AV.TimeSeriesResult.model_validate(response.json())
     raw = {ts_str: ohlcv.model_dump() for ts_str, ohlcv in result.time_series.items()}
-    if not raw:
-        print(f"Daily Time Series for {symbol} are missing, skipping.")        
-        raise AV.APIError()
     df = pd.DataFrame.from_dict(raw, orient="index")
     idx = pd.to_datetime(df.index, errors="coerce")
     df.index = idx
@@ -59,10 +58,7 @@ def fetch_daily_OHLCV(symbol: str) -> pd.DataFrame:
 @memory.cache # type: ignore
 def fetch_insider_transactions(symbol: str) -> pd.DataFrame:
     response = AV.InsiderTransactionsRequest(symbol=symbol).query()
-    result = AV.InsiderTransactionsResult().parse(response.json())
-
-    # TODO: Not entirely sure if insider transaction endpoint returns the amount of shares
-    # acquired/disposed, so check when you have internet, keep a binary feature for now
+    result = AV.InsiderTransactionsResult.model_validate(response.json())
     raw: Dict[str, int] = {}
     for transaction in result.data:
         raw[transaction.transaction_date] = 1 if transaction.acquisition_or_disposal == 'A' else 0
@@ -71,6 +67,11 @@ def fetch_insider_transactions(symbol: str) -> pd.DataFrame:
     df.index.name = "date"
     df = df.sort_index()
     return df
+
+
+@memory.cache
+def fetch_overview(symbol: str):
+    return AV.OverviewRequest(symbol=symbol).query().json()
 
 
 @memory.cache # type: ignore
@@ -88,7 +89,10 @@ def fetch_news_sentiment(symbol: str, time_from: datetime, time_to: datetime) ->
             time_to=end,
             limit=NEWS_LIMIT_PER_REQUEST
         ).query()
-        result = AV.NewsResult.parse(response.json())
+        try:
+            result = AV.NewsResult.model_validate(response.json())
+        except AV.APIError:
+            continue    
 
         # Each item in the feed has a list of tickers that are mentioned in the article,
         # this way we are extracting the ticker that we need
@@ -146,7 +150,17 @@ def build_features_for_ticker(symbol:str) -> pd.DataFrame:
 
 @memory.cache # type: ignore
 def populate_dataset(symbols: List[str]) -> Dict[str, pd.DataFrame]:
-    return {symbol: build_features_for_ticker(symbol) for symbol in tqdm(symbols, total=len(symbols), desc=f"Processing the tickers.")}
+    data: Dict[str, pd.DataFrame] = {}
+    for symbol in tqdm(symbols, total=len(symbols), desc=f"Processing the tickers."):
+        with open('.logs_cache', 'a', encoding='utf-8') as file:
+            try:
+                data[symbol] = build_features_for_ticker(symbol)
+                file.write(f"Processing {symbol}\n")
+            except AV.APIError as error:
+                file.write(f"Error has occured when processing {symbol}. Error: {error}\n")
+                # print(f"Skipping {symbol}")
+                continue
+    return data
 
 
 def save_data(data: Dict[str, pd.DataFrame], root: str = ".alpha_vantage_cache", folder: str = "dataset"):
@@ -185,15 +199,34 @@ def load_data(root: str = ".alpha_vantage_cache", folder: str = "dataset") -> Di
     return data
 
 
-if __name__ == '__main__':
-    tickers = [
-    "AAPL",
-    "MSFT",
-    # "AMZN",
-    # "GOOG",
-    # "GOOGL",
-    # "META",
-    ]
-    # memory.clear(warn=False)
-    save_data(populate_dataset(tickers))
+@memory.cache
+def save_tickers(all_tickers: List[str]) -> List[str]:
+    # TODO: This is an ugly but fast implementation of what i need. 
+    # Possible improvement involves implementing OverviewResult and migrating the 
+    # error handeling there instead of this weird way. I will get back to this after I am done
+    # with the main implementations of the project
+    tickers: List[str] = []
+    with open('.tickers', mode='w', encoding='utf-8') as file:
+        for ticker in tqdm(all_tickers, total=len(all_tickers), desc='Choosing Tickers'):
+            response = AV.OverviewRequest(symbol=ticker).query().json()
+            try:
+                if not response:
+                    continue
+                if not response["AssetType"] or response["AssetType"] != "Common Stock":
+                    continue
+                if not response["MarketCapitalization"] or response["MarketCapitalization"] == 'None' or int(response["MarketCapitalization"]) < MIN_MARKET_CAPITALIZATION:
+                    continue
+                file.write(f"{ticker}\n")
+                tickers.append(ticker)
+            except:
+                with open('.errors', mode='a', encoding='utf-8') as error_file:
+                    error_file.write("=========RESPONSE========\n")
+                    error_file.write(f"{response}\n")
+                continue
+    return tickers
 
+if __name__ == '__main__':
+    # memory.clear(warn=False)
+    all_tickers = [asset.symbol for asset in get_assets()]
+    chosen_tickers = save_tickers(all_tickers)
+    print(f"Done! Total tickers saved: {len(chosen_tickers)}")

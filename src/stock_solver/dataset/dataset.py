@@ -4,6 +4,7 @@ import numpy as np
 
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, TypeAlias
+from .apis.alpha_vantage_calls import populate_dataset, save_data
 
 TrainElement: TypeAlias = Tuple[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor], int]
 TestElement: TypeAlias = Tuple[Tuple[torch.Tensor, torch.Tensor], torch.Tensor, int]
@@ -80,4 +81,8 @@ def collate(batch: List[Element]):
 
 
 if __name__ == '__main__':
-    ...
+    tickers = []
+    with open('.tickers', 'r', encoding='utf-8') as file:
+        tickers = file.readlines()
+    tickers = [ticker.strip() for ticker in tickers]
+    save_data(populate_dataset(tickers))
