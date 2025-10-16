@@ -201,32 +201,21 @@ def load_data(root: str = ".alpha_vantage_cache", folder: str = "dataset") -> Di
 
 @memory.cache
 def save_tickers(all_tickers: List[str]) -> List[str]:
-    # TODO: This is an ugly but fast implementation of what i need. 
-    # Possible improvement involves implementing OverviewResult and migrating the 
-    # error handeling there instead of this weird way. I will get back to this after I am done
-    # with the main implementations of the project
     tickers: List[str] = []
-    with open('.tickers', mode='w', encoding='utf-8') as file:
-        for ticker in tqdm(all_tickers, total=len(all_tickers), desc='Choosing Tickers'):
-            response = AV.OverviewRequest(symbol=ticker).query().json()
-            try:
-                if not response:
-                    continue
-                if not response["AssetType"] or response["AssetType"] != "Common Stock":
-                    continue
-                if not response["MarketCapitalization"] or response["MarketCapitalization"] == 'None' or int(response["MarketCapitalization"]) < MIN_MARKET_CAPITALIZATION:
-                    continue
-                file.write(f"{ticker}\n")
-                tickers.append(ticker)
-            except:
-                with open('.errors', mode='a', encoding='utf-8') as error_file:
-                    error_file.write("=========RESPONSE========\n")
-                    error_file.write(f"{response}\n")
-                continue
+    for ticker in tqdm(all_tickers, total=len(all_tickers), desc='Choosing Tickers'):
+        response = AV.OverviewRequest(symbol=ticker).query()
+        try:
+            _ = AV.OverviewResult.model_validate(response.json())
+            tickers.append(ticker)
+        except:
+            continue
     return tickers
+
 
 if __name__ == '__main__':
     # memory.clear(warn=False)
     all_tickers = [asset.symbol for asset in get_assets()]
     chosen_tickers = save_tickers(all_tickers)
+    with open("tickers", "w", encoding="utf-8") as file:
+        file.writelines(chosen_tickers)
     print(f"Done! Total tickers saved: {len(chosen_tickers)}")
