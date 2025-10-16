@@ -1,18 +1,16 @@
-from pydantic import BaseModel
-from typing import Any, Self
+from pydantic import BaseModel, ConfigDict, model_validator
+from typing import Any, ClassVar
+from ..errors import APIError
 
 class Result(BaseModel):
-    # TODO: remove parse and _is_invalid_date, use Pydantic validators and parsers 
+    error_keys: ClassVar[frozenset[str]] = frozenset({"error", "error message", "information", "note"})
+    model_config = ConfigDict(extra="ignore")
+    
+    @model_validator(mode="before")
     @classmethod
-    def parse(cls, data: dict[str, Any]) -> Self:
-        if cls._is_invalid_data(data):
-            return cls()
-        return cls(**data)
-
-    @classmethod
-    def _is_invalid_data(cls, data: dict[str, Any]) -> bool:
-        """
-        Optional Override. Return True if API response is invalid or empty.
-        """
-        return False
-
+    def _is_invalid_data(cls, data: Any) -> Any:
+        if not data:
+            raise TypeError("Data is null")
+        if {str(key).lower() for key in dict(data)} & cls.error_keys:
+            raise APIError("Error has occured!", data=data)
+        return data
