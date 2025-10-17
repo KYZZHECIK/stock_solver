@@ -37,9 +37,12 @@ flowchart TD
     AV --> AVTS[Daily Time Series]
     AV --> AVNS[News Sentiments]
     AV --> AVIT[Insider Transactions]
-    AVTS --> Concat[+]
-    AVNS --> Concat[+]
-    AVIT --> Concat[+]
+    AVTS --> Concat(+)
+    AVNS --> Concat
+    AVIT --> Concat
+    Concat --> FeatureTable[Matrix: date -> features]
+    FeatureTable --> Dict[Dictionary: Ticker -> Table]
+    Dict --> Dataset[Torch Dataset]
 ```
 
 ## Getting Started
