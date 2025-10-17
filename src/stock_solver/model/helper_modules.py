@@ -52,6 +52,35 @@ class EncoderLayer(torch.nn.Module):
  
 
 class DecoderLayer(torch.nn.Module):
-    def __init__(self):
+    def __init__(
+            self,
+            self_attention: torch.nn.Module,
+            cross_attention: torch.nn.Module,
+            model_dim: int,
+            hidden_dim: int,
+            dropout: float
+        ):
         super().__init__() # type: ignore
-        
+
+        self.cross_attention = cross_attention
+        self.attention = self_attention
+        self.dropout= torch.nn.Dropout(dropout)
+        self.norm1 = torch.nn.LayerNorm(model_dim)
+        self.norm2 = torch.nn.LayerNorm(model_dim)
+        self.norm3 = torch.nn.LayerNorm(model_dim)
+        self.ffn = FFN(model_dim=model_dim, hidden_dim=hidden_dim, dropout=dropout)
+
+    def forward(
+            self,
+            x: torch.Tensor,
+            encoder_out: torch.Tensor,
+            key_padding_mask: Optional[torch.Tensor] = None,
+            encoder_padding_mask: Optional[torch.Tensor] = None,
+            causal_mask: Optional[torch.Tensor] = None
+        ) -> torch.Tensor:
+        dec_attn = self.attention(x, x, x, key_padding_mask, causal_mask)
+        x = self.norm1(x + self.dropout(dec_attn))
+        cross_attn = self.cross_attention(x, encoder_out, encoder_out, encoder_padding_mask)
+        x = self.norm2(x + self.dropout(cross_attn))
+        x = self.norm3(x + self.dropout(self.ffn(x)))
+        return x
