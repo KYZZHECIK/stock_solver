@@ -35,7 +35,7 @@ flowchart TD
     B --> C{For Each Selected Ticker}:::gate
     
     subgraph INGEST[Alpha Vantage Ingestion]
-        direction TD
+    direction TD
         AV[AV API Wrapper]:::code
         TS[Daily OHLCV]:::data
         NS[News Sentiment]:::data
