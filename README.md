@@ -32,9 +32,9 @@ Toy project to predict and analyze stock market. Currently under active developm
 ```mermaid
 flowchart TD
     A["Fetch Tradable Symbols (Alpaca)"]:::proc --> B[Filter Tickers]
-    subgraph INGEST[Alpha Vantage EndPoints]
-        AV[API Wrapper]:::code
-        TS[Daily OHLCV]:::data
+    subgraph INGEST[Alpha Vantage Wrapper]
+        AV[AV Module]:::code
+        TS[Daily Time Series]:::data
         NS[News Sentiment]:::data
         IT[Insider Transactions]:::data
         AV --> TS
@@ -45,7 +45,7 @@ flowchart TD
         IT --> Concat
     end
     B --> AV
-    FM[Per Ticker Feature Matrix $$\in \reals$$]:::artifact
+    FM[Per Ticker Feature Matrix (Time*Features)]:::artifact
     Concat --> FM
     FM --> DA[Torch Dataset]
 ```
