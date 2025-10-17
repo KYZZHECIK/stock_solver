@@ -12,7 +12,7 @@ from .alpaca import get_assets
 import stock_solver.dataset.apis.alpha_vantage as AV
 
 TICKERS_LIMIT = 500
-TIME_STEP = timedelta(weeks=1)
+TIME_STEP = timedelta(days=30)
 NEWS_LIMIT_PER_REQUEST = 1000
 MIN_MARKET_CAPITALIZATION = 1_000_000_000
 
@@ -91,7 +91,7 @@ def fetch_news_sentiment(symbol: str, time_from: datetime, time_to: datetime) ->
         ).query()
         try:
             result = AV.NewsResult.model_validate(response.json())
-        except AV.APIError:
+        except:
             continue    
 
         # Each item in the feed has a list of tickers that are mentioned in the article,
