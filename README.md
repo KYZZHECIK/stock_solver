@@ -49,7 +49,6 @@ flowchart TD
     subgraph PROC[Processing]
         JN[Align & Join by Date]:::proc
         FE["Engineer Features <br> (returns, lags, indicators)"]:::proc
-        <!-- SC[Per-Ticker Scaling/Normalize]:::proc -->
     end
 
     TS --> JN
