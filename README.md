@@ -31,7 +31,7 @@ Toy project to predict and analyze stock market. Currently under active developm
 ## Data Pipeline
 ```mermaid
 flowchart TD
-    A[Fetch Tradable Symbols (Alpaca)]:::proc --> B[Filter Tickers]:::proc
+    A["Fetch Tradable Symbols (Alpaca)"]:::proc --> B[Filter Tickers]:::proc
     B --> C{For Each Selected Ticker}:::gate
     
     subgraph INGEST[Alpha Vantage Ingestion]
@@ -50,7 +50,7 @@ flowchart TD
     subgraph PROC[Processing]    
     direction TD
         JN[Align & Join by Date]:::proc
-        FE[Engineer Features <br> (returns, lags, indicators)]:::proc
+        FE["Engineer Features <br> (returns, lags, indicators)"]:::proc
         <!-- SC[Per-Ticker Scaling/Normalize]:::proc -->
     end
 
@@ -59,16 +59,16 @@ flowchart TD
     IT --> JN
     JN --> FE --> SC
 
-    FM[Feature Matrix $$\in$$ $$\mathbb{R}^(T×F)$$ + Target]:::artifact
+    FM["Feature Matrix $$\in$$ $$\mathbb{R}^(T×F)$$ + Target"]:::artifact
     SC --> FM
-    STORE[Feature Store<br/>Dict&lt;Ticker, {X, y, meta}&gt;]:::store
+    STORE["Feature Store<br>Dict&lt;Ticker, {X, y, meta}&gt;"]:::store
     FM --> STORE
     
-    DS[Pack → torch.utils.data.Dataset<br/>(StockDataset)]:::code
-    CL[DataLoader + collate_fn<br/>(dict → batch)]:::code
+    DS["Pack → torch.utils.data.Dataset<br/>(StockDataset)"]:::code
+    CL["DataLoader + collate_fn<br/>(dict → batch)"]:::code
     STORE --> DS --> CL
 
-    %% CL --> M[Model (Informer)]:::artifact
+    %% CL --> M["Model (Informer)"]:::artifact
 
     classDef proc fill:#eef,stroke:#99a;
     classDef code fill:#f6eef9,stroke:#a9a;
