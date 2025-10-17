@@ -21,13 +21,15 @@ Toy project to predict and analyze stock market. Currently under active developm
     - [x] Basic preprocessing and aggregation of the features
     - [ ] Per-ticker normalization
 - [ ] **Model Implementation**:
-    - [ ] Encoder
-    - [ ] Decoder
-    - [ ] Distillation
+    - [x] Encoder
+    - [x] Decoder
+    - [x] Distillation
     - [x] ProbSparse Attention
-    - [ ] Embedding
+    - [x] Embedding
 - [ ] **Model Evaluation**:
 
+## Data Pipeline
+**TODO**
 
 ## Getting Started
 1. Clone the repository
