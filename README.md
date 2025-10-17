@@ -45,7 +45,7 @@ flowchart TD
         IT --> Concat
     end
     B --> AV
-    FM[Per Ticker Feature Matrix (Time*Features)]:::artifact
+    FM["Per Ticker Feature Matrix (Time*Features)"]:::artifact
     Concat --> FM
     FM --> DA[Torch Dataset]
 ```
