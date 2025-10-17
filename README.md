@@ -29,7 +29,12 @@ Toy project to predict and analyze stock market. Currently under active developm
 - [ ] **Model Evaluation**:
 
 ## Data Pipeline
-**TODO**
+```mermaid
+flowchart TD
+    GetAllTickers[Get All Tickers via Alpaca API] --> FilterTickers[Filter Tickers]
+    FilterTickers --> Ticker[Ticker]
+    Ticker --> AV[AlphaVantage API Wrapper]
+```
 
 ## Getting Started
 1. Clone the repository
