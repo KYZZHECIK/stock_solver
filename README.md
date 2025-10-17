@@ -31,18 +31,51 @@ Toy project to predict and analyze stock market. Currently under active developm
 ## Data Pipeline
 ```mermaid
 flowchart TD
-    GetAllTickers[Get All Tickers via Alpaca API] --> FilterTickers[Filter Tickers]
-    FilterTickers --> Ticker[Ticker]
-    Ticker --> AV[AlphaVantage API Wrapper]
-    AV --> AVTS[Daily Time Series]
-    AV --> AVNS[News Sentiments]
-    AV --> AVIT[Insider Transactions]
-    AVTS --> Concat(+)
-    AVNS --> Concat
-    AVIT --> Concat
-    Concat --> FeatureTable[Matrix: date -> features]
-    FeatureTable --> Dict[Dictionary: Ticker -> Table]
-    Dict --> Dataset[Torch Dataset]
+    A[Fetch Tradable Symbols (Alpaca)]:::proc --> B[Filter Tickers]:::proc
+    B --> C{For Each Selected Ticker}:::gate
+    
+    subgraph INGEST[Alpha Vantage Ingestion]
+        direction TD
+        AV[AV API Wrapper]:::code
+        TS[Daily OHLCV]:::data
+        NS[News Sentiment]:::data
+        IT[Insider Transactions]:::data
+        AV --> TS
+        AV --> NS
+        AV --> IT
+    end
+
+    C --> AV
+
+    subgraph PROC[Processing]    
+    direction TD
+        JN[Align & Join by Date]:::proc
+        FE[Engineer Features <br> (returns, lags, indicators)]:::proc
+        <!-- SC[Per-Ticker Scaling/Normalize]:::proc -->
+    end
+
+    TS --> JN
+    NS --> JN
+    IT --> JN
+    JN --> FE --> SC
+
+    FM[Feature Matrix $$\in$$ $$\mathbb{R}^(T×F)$$ + Target]:::artifact
+    SC --> FM
+    STORE[Feature Store<br/>Dict&lt;Ticker, {X, y, meta}&gt;]:::store
+    FM --> STORE
+    
+    DS[Pack → torch.utils.data.Dataset<br/>(StockDataset)]:::code
+    CL[DataLoader + collate_fn<br/>(dict → batch)]:::code
+    STORE --> DS --> CL
+
+    %% CL --> M[Model (Informer)]:::artifact
+
+    classDef proc fill:#eef,stroke:#99a;
+    classDef code fill:#f6eef9,stroke:#a9a;
+    classDef data fill:#eef9f6,stroke:#9a9;
+    classDef artifact fill:#fff7e6,stroke:#caa;
+    classDef store fill:#fff1cc,stroke:#caa;
+    classDef gate fill:#eee,stroke:#999;
 ```
 
 ## Getting Started
