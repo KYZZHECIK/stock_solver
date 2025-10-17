@@ -31,8 +31,7 @@ Toy project to predict and analyze stock market. Currently under active developm
 ## Data Pipeline
 ```mermaid
 flowchart TD
-    A["Fetch Tradable Symbols (Alpaca)"]:::proc --> B[Filter Tickers]:::proc
-    B --> C[[For Each Selected Ticker]]:::gate
+    A["Fetch Tradable Symbols (Alpaca)"]:::proc --> B[Filter Tickers]
     
     subgraph INGEST[Alpha Vantage Ingestion]
         AV[AV API Wrapper]:::code
@@ -44,19 +43,15 @@ flowchart TD
         AV --> IT
     end
 
-    C --> AV
+    B --> AV
+    
 
-    subgraph PROC[Processing]
-        FE["Clean and preprocess"]:::proc
-        JN[Align & Join by Date]:::proc
-    end
+    TS --> Concat(+)
+    NS --> Concat
+    IT --> Concet
 
-    TS --> FE
-    NS --> FE
-    IT --> FE
-    FE --> JN --> SC
-
-    FM["Feature Matrix $$\in R^(T×F)$$"]:::artifact
+    FM[Feature Matrix $$\in \reals$$]:::artifact
+    Concat --> FM
     FM --> DC[Ticker to Matrix dictionary]
     DC --> DA[Torch Dataset]
     DA --> M["Model (Informer)"]:::artifact
