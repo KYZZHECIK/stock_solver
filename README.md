@@ -65,14 +65,7 @@ flowchart TD
     CL["DataLoader + collate_fn<br/>(dict → batch)"]:::code
     STORE --> DS --> CL
 
-    %% CL --> M["Model (Informer)"]:::artifact
-
-    classDef proc fill:#eef,stroke:#99a;
-    classDef code fill:#f6eef9,stroke:#a9a;
-    classDef data fill:#eef9f6,stroke:#9a9;
-    classDef artifact fill:#fff7e6,stroke:#caa;
-    classDef store fill:#fff1cc,stroke:#caa;
-    classDef gate fill:#eee,stroke:#999;
+    CL --> M["Model (Informer)"]:::artifact
 ```
 
 ## Getting Started
