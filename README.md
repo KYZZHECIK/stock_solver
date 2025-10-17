@@ -56,7 +56,7 @@ flowchart TD
     IT --> JN
     JN --> FE --> SC
 
-    FM["Feature Matrix $$\in$$ $$\mathbb{R}^(T×F)$$ + Target"]:::artifact
+    FM["Feature Matrix $$\in \mathbb{R}^(T×F)$$ + Target"]:::artifact
     SC --> FM
     STORE["Feature Store<br>Dict&lt;Ticker, {X, y, meta}&gt;"]:::store
     FM --> STORE
