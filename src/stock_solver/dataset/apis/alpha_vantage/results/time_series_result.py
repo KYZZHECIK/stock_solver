@@ -4,6 +4,7 @@ from pydantic.functional_validators import model_validator
 
 from .result import Result
 
+
 class OHLCV(BaseModel):
     open: str
     high: str
@@ -12,7 +13,7 @@ class OHLCV(BaseModel):
     adjusted_close: Optional[str] = Field(default=None)
     volume: str
 
-    model_config = ConfigDict(populate_by_name=True, extra='ignore')
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
 
     @model_validator(mode="before")
     @classmethod
@@ -42,7 +43,7 @@ class TimeSeriesResult(Result):
 
     model_config = ConfigDict(populate_by_name=True, extra='ignore')
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def _extract_timeseries(cls, v: Any) -> Any:
         v = dict(v)
@@ -54,11 +55,3 @@ class TimeSeriesResult(Result):
             v["time_series"] = v.pop(ts_key)
         
         return v
-
-    @classmethod
-    def _is_invalid_data(cls, data: Dict[str, Any]) -> bool:
-        if "Information" in data:
-            return True
-        if not any(k.startswith("Time Series") for k in data.keys()):
-            return True
-        return False

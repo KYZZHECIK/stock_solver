@@ -3,7 +3,7 @@ import math
 
 class ProbSparseAttention(torch.nn.Module):
     def __init__(self, factor: float, dropout: float = 0.1, eps: float = 1e-9):
-        super().__init__()
+        super().__init__() # type: ignore
 
         self.factor = factor
         self.dropout = torch.nn.Dropout(dropout)
@@ -34,7 +34,7 @@ class ProbSparseAttention(torch.nn.Module):
 
 class AttentionLayer(torch.nn.Module):
     def __init__(self, dim: int, heads: int, factor: float, attn_dropout: float = 0.1, proj_dropout: float = 0.1):
-        super().__init__()
+        super().__init__() # type: ignore
         self.dim, self.heads = dim, heads
         self.dh = dim // heads
         self.Q_proj = torch.nn.Linear(dim, dim)
@@ -50,7 +50,7 @@ class AttentionLayer(torch.nn.Module):
         matrix = matrix.permute(0, 2, 1, 3).contiguous().view(B*self.heads, L, self.dh)
         return matrix
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         B, L, D = x.shape
         Q = self.project(self.Q_proj, x)
         K = self.project(self.K_proj, x)
