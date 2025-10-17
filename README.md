@@ -34,6 +34,12 @@ flowchart TD
     GetAllTickers[Get All Tickers via Alpaca API] --> FilterTickers[Filter Tickers]
     FilterTickers --> Ticker[Ticker]
     Ticker --> AV[AlphaVantage API Wrapper]
+    AV --> AVTS[Daily Time Series]
+    AV --> AVNS[News Sentiments]
+    AV --> AVIT[Insider Transactions]
+    AVTS --> Concat[+]
+    AVNS --> Concat[+]
+    AVIT --> Concat[+]
 ```
 
 ## Getting Started
