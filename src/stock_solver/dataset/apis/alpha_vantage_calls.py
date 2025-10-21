@@ -195,8 +195,7 @@ def update_manifest_entry(ticker: str, file_name: str, manifest_path: Path):
 
 
 
-def load_data(root: str = ".alpha_vantage_cache", folder: str = "dataset") -> Dict[str, pd.DataFrame]:
-    path = Path(root) / folder
+def load_data(path: Path = Path(".alpha_vantage_cache", "dataset")) -> Dict[str, pd.DataFrame]:
     manifest_path = path / "manifest.json"
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -204,13 +203,13 @@ def load_data(root: str = ".alpha_vantage_cache", folder: str = "dataset") -> Di
     for item in manifest["tickers"]:
         ticker = item["ticker"]
         file = path / item["file"]
-        df = pd.read_parquet(file, engine='pyarrow')
+        df = pd.read_parquet(file, engine='pyarrow') # type: ignore
         df["date"] = pd.to_datetime(df["date"], utc=False, errors='raise')
         data[ticker] = df
     return data
 
 
-@memory.cache
+@memory.cache # type: ignore
 def filter_tickers(all_tickers: List[str]) -> List[str]:
     tickers: List[str] = []
     for ticker in tqdm(all_tickers, total=len(all_tickers), desc='Choosing Tickers'):
@@ -224,7 +223,6 @@ def filter_tickers(all_tickers: List[str]) -> List[str]:
 
 
 if __name__ == '__main__':
-    ...
     memory.clear(warn=False)
     with open('tickers', 'r', encoding='utf-8') as file:
         tickers = file.readlines()

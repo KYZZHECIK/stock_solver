@@ -4,7 +4,7 @@ import numpy as np
 
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, TypeAlias
-from .apis.alpha_vantage_calls import save_data
+from .apis.alpha_vantage_calls import load_data
 
 TrainElement: TypeAlias = Tuple[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor], int]
 TestElement: TypeAlias = Tuple[Tuple[torch.Tensor, torch.Tensor], torch.Tensor, int]
@@ -17,7 +17,7 @@ class WindowIndex:
 
 
 class MultiTickerDataset(torch.utils.data.Dataset[Element]):
-    feature_cols: List[str] = ["open", "high", "low", "adjusted_close", "news_sent_wsum", "insider_transaction"]
+    feature_cols: List[str] = ["open", "high", "low", "adjusted_close", "news_sentiment_wmean"]
     target_col: str = "close"
 
     def __init__(self, data: Dict[str, pd.DataFrame], lookback: int, horizon: int, is_test: bool = False):
@@ -81,8 +81,6 @@ def collate(batch: List[Element]):
 
 
 if __name__ == '__main__':
-    tickers = []
-    with open('tickers', 'r', encoding='utf-8') as file:
-        tickers = file.readlines()
-    tickers = [ticker.strip() for ticker in tickers]
-    save_data(tickers)
+    data = load_data()
+    dataset = MultiTickerDataset(data, lookback=30, horizon=3)
+    print(dataset[0])
