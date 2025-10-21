@@ -85,4 +85,4 @@ if __name__ == '__main__':
     with open('tickers', 'r', encoding='utf-8') as file:
         tickers = file.readlines()
     tickers = [ticker.strip() for ticker in tickers]
-    save_data(populate_dataset(tickers))
+    save_data(tickers)

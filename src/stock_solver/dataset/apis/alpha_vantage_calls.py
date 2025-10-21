@@ -56,20 +56,6 @@ def fetch_daily_OHLCV(symbol: str) -> pd.DataFrame:
 
 
 @memory.cache # type: ignore
-def fetch_insider_transactions(symbol: str) -> pd.DataFrame:
-    response = AV.InsiderTransactionsRequest(symbol=symbol).query()
-    result = AV.InsiderTransactionsResult.model_validate(response.json())
-    raw: Dict[str, int] = {}
-    for transaction in result.data:
-        raw[transaction.transaction_date] = 1 if transaction.acquisition_or_disposal == 'A' else 0
-    df = pd.DataFrame.from_dict(raw, orient="index")
-    df.index = pd.to_datetime(df.index, errors="coerce")
-    df.index.name = "date"
-    df = df.sort_index()
-    return df
-
-
-@memory.cache
 def fetch_overview(symbol: str):
     return AV.OverviewRequest(symbol=symbol).query().json()
 
@@ -131,7 +117,6 @@ def aggregate_news_sentiment(raw: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-@memory.cache # type: ignore
 def build_features_for_ticker(symbol:str) -> pd.DataFrame:
     time_series_df = fetch_daily_OHLCV(symbol)
     min_date = time_series_df.index.min()
@@ -144,7 +129,6 @@ def build_features_for_ticker(symbol:str) -> pd.DataFrame:
     time_series_df = time_series_df.join(news_df, how="left") 
     time_series_df[news_cols] = time_series_df[news_cols].fillna(0.0)
     
-    # TODO: add the insider transaction df here 
     return time_series_df
 
 
@@ -163,25 +147,66 @@ def populate_dataset(symbols: List[str]) -> Dict[str, pd.DataFrame]:
     return data
 
 
-def save_data(data: Dict[str, pd.DataFrame], root: str = ".alpha_vantage_cache", folder: str = "dataset"):
-    path = Path(root) / folder
+def save_data(
+    symbols: List[str],
+    path: Path = Path(".alpha_vantage_cache", "dataset"),
+    overwrite: bool = False,
+    log_path: str = ".logs_cache"
+):
     path.mkdir(parents=True, exist_ok=True)
+    with open(log_path, "a", encoding="utf-8") as log:
+        for symbol in tqdm(symbols, total=len(symbols), desc="Saving features for tickers"):
+            try:
+                out_path = save_ticker(symbol, path=path, overwrite=overwrite)
+                update_manifest_entry(symbol, out_path.name, path / "manifest.json")
+                log.write(f"{datetime.now().isoformat()} | OK | {symbol}\n")
+            except AV.APIError as api_error:
+                log.write(f"{datetime.now().isoformat()} | API_ERROR | {symbol} | {api_error}\n")
+            except Exception as error:
+                log.write(f"{datetime.now().isoformat()} | ERROR | {symbol} | {error}\n")
+    
+def save_ticker(symbol: str, path: Path, overwrite: bool = False) -> Path:
+    out_path = path / f"{symbol}.parquet"
+    
+    if out_path.exists() and not overwrite:
+        return out_path
+    
+    df = build_features_for_ticker(symbol)
+    tmp = out_path.with_suffix(out_path.suffix + ".tmp")
+    df.reset_index().to_parquet(tmp, engine="pyarrow", compression="zstd")
+    tmp.replace(out_path)
+    return out_path
+    
+def update_manifest_entry(ticker: str, file_name: str, manifest_path: Path):
+    if manifest_path.exists():
+        manifest: Dict[str, Any] = json.loads(manifest_path.read_text(encoding="utf-8"))
+    else:
+        manifest = {"version": 1, "created_at": datetime.now().strftime("%d/%m/%Y, %H:%M:%S"), "tickers": []}
+    
+    manifest["tickers"] = [t for t in manifest["tickers"] if t["ticker"] != ticker]
+    manifest["tickers"].append({"ticker": ticker, "file": file_name})
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
-    manifest: Dict[str, Any] = {
-        "version": "1",
-        "created_at": datetime.now().strftime("%d/%m/%Y, %H:%M:%S"),
-        "tickers": []
-    }
 
-    for ticker, df in data.items():
-        out_path = path / f"{ticker}.parquet"
-        df.reset_index().to_parquet(
-            out_path,
-            engine="pyarrow",
-            compression="zstd"
-        )
-        manifest["tickers"].append({"ticker": ticker, "file": f"{ticker}.parquet"})
-    (path / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+# def save_data(data: Dict[str, pd.DataFrame], root: str = ".alpha_vantage_cache", folder: str = "dataset"):
+#     path = Path(root) / folder
+#     path.mkdir(parents=True, exist_ok=True)
+
+#     manifest: Dict[str, Any] = {
+#         "version": "1",
+#         "created_at": datetime.now().strftime("%d/%m/%Y, %H:%M:%S"),
+#         "tickers": []
+#     }
+
+#     for ticker, df in data.items():
+#         out_path = path / f"{ticker}.parquet"
+#         df.reset_index().to_parquet(
+#             out_path,
+#             engine="pyarrow",
+#             compression="zstd"
+#         )
+#         manifest["tickers"].append({"ticker": ticker, "file": f"{ticker}.parquet"})
+#     (path / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         
 
 def load_data(root: str = ".alpha_vantage_cache", folder: str = "dataset") -> Dict[str, pd.DataFrame]:
@@ -213,9 +238,10 @@ def save_tickers(all_tickers: List[str]) -> List[str]:
 
 
 if __name__ == '__main__':
+    ...
     # memory.clear(warn=False)
-    all_tickers = [asset.symbol for asset in get_assets()]
-    chosen_tickers = save_tickers(all_tickers)
-    with open("tickers", "w", encoding="utf-8") as file:
-        file.writelines(chosen_tickers)
-    print(f"Done! Total tickers saved: {len(chosen_tickers)}")
+    # all_tickers = [asset.symbol for asset in get_assets()]
+    # chosen_tickers = save_tickers(all_tickers)
+    # with open("tickers", "w", encoding="utf-8") as file:
+    #     file.writelines(chosen_tickers)
+    # print(f"Done! Total tickers saved: {len(chosen_tickers)}")
