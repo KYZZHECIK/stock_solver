@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import time
 from pathlib import Path
 
 from typing import Generator, Dict, List, Any
@@ -11,10 +12,12 @@ import json
 from .alpaca import get_assets
 from . import alpha_vantage as AV
 
-TICKERS_LIMIT = 500
 TIME_STEP = timedelta(days=30)
-NEWS_LIMIT_PER_REQUEST = 1000
+NEWS_LIMIT_PER_REQUEST = 500
 MIN_MARKET_CAPITALIZATION = 1_000_000_000
+
+MAX_RETRIES = 3
+RETRY_WAIT = 60 # number of seconds to wait on api error before retrying
 
 memory = Memory(".alpha_vantage_cache", verbose=0)
 
@@ -133,21 +136,6 @@ def build_features_for_ticker(symbol:str) -> pd.DataFrame:
     return time_series_df
 
 
-@memory.cache # type: ignore
-def populate_dataset(symbols: List[str]) -> Dict[str, pd.DataFrame]:
-    data: Dict[str, pd.DataFrame] = {}
-    for symbol in tqdm(symbols, total=len(symbols), desc=f"Processing the tickers."):
-        with open('.logs_cache', 'a', encoding='utf-8') as file:
-            try:
-                data[symbol] = build_features_for_ticker(symbol)
-                file.write(f"Processing {symbol}\n")
-            except AV.APIError as error:
-                file.write(f"Error has occured when processing {symbol}. Error: {error}\n")
-                # print(f"Skipping {symbol}")
-                continue
-    return data
-
-
 def save_data(
     symbols: List[str],
     path: Path = Path(".alpha_vantage_cache", "dataset"),
@@ -157,14 +145,25 @@ def save_data(
     path.mkdir(parents=True, exist_ok=True)
     with open(log_path, "a", encoding="utf-8") as log:
         for symbol in tqdm(symbols, total=len(symbols), desc="Saving features for tickers"):
-            try:
-                out_path = save_ticker(symbol, path=path, overwrite=overwrite)
-                update_manifest_entry(symbol, out_path.name, path / "manifest.json")
-                log.write(f"{datetime.now().isoformat()} | OK | {symbol}\n")
-            except AV.APIError as api_error:
-                log.write(f"{datetime.now().isoformat()} | API_ERROR | {symbol} | {api_error}\n")
-            except Exception as error:
-                log.write(f"{datetime.now().isoformat()} | ERROR | {symbol} | {error}\n")
+            attempt = 0
+            while True:
+                try:
+                    out_path = save_ticker(symbol, path=path, overwrite=overwrite)
+                    update_manifest_entry(symbol, out_path.name, path / "manifest.json")
+                    log.write(f"{datetime.now().isoformat()} | OK | {symbol}\n")
+                    break
+                except AV.APIError as api_error:
+                    attempt += 1
+                    log.write(f"{datetime.now().isoformat()} | API_ERROR | {symbol} | {api_error}\n")
+                    if attempt < MAX_RETRIES:
+                        time.sleep(RETRY_WAIT)
+                        continue
+                    else: 
+                        log.write(f"{datetime.now().isoformat()} | API_ERROR | {symbol} | Maximum number of retries has been exceeded.")
+                        break
+                except Exception as error:
+                    log.write(f"{datetime.now().isoformat()} | ERROR | {symbol} | {error}\n")
+                    break
     
 def save_ticker(symbol: str, path: Path, overwrite: bool = False) -> Path:
     out_path = path / f"{symbol}.parquet"
@@ -219,6 +218,7 @@ def filter_tickers(all_tickers: List[str]) -> List[str]:
 
 
 if __name__ == '__main__':
+    ...
     # memory.clear(warn=False)
     # all_tickers = [asset.symbol for asset in get_assets()]
     # chosen_tickers = save_tickers(all_tickers)

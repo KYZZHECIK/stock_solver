@@ -4,7 +4,7 @@ import numpy as np
 
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, TypeAlias
-from .apis.alpha_vantage_calls import populate_dataset, save_data
+from .apis.alpha_vantage_calls import save_data
 
 TrainElement: TypeAlias = Tuple[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor], int]
 TestElement: TypeAlias = Tuple[Tuple[torch.Tensor, torch.Tensor], torch.Tensor, int]
