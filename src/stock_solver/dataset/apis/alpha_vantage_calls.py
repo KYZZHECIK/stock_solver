@@ -67,7 +67,8 @@ def fetch_news_sentiment(symbol: str, time_from: datetime, time_to: datetime) ->
     for start, end in tqdm(
         time_iterator(time_from, time_to, TIME_STEP),
         total=time_iterator_len(time_from, time_to, TIME_STEP),
-        desc=f"{symbol} news collection"
+        desc=f"{symbol} news collection",
+        leave=False
         ):
         response = AV.NewsRequest(
             tickers=[symbol],
@@ -218,7 +219,6 @@ def save_tickers(all_tickers: List[str]) -> List[str]:
 
 
 if __name__ == '__main__':
-    ...
     # memory.clear(warn=False)
     # all_tickers = [asset.symbol for asset in get_assets()]
     # chosen_tickers = save_tickers(all_tickers)
