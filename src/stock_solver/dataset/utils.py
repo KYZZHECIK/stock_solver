@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 from contextlib import contextmanager
 import time
+import logging
 
 from joblib import Memory # type: ignore
 
@@ -35,3 +36,12 @@ def api_keys() -> API_KEYS:
         alpaca_secret=alpaca_secret_key,
         alpha_vantage_api=alpha_vantage_api_key,
     )
+
+def get_logger() -> logging.Logger:
+    logger = logging.getLogger('api_logger')
+    logger.setLevel(logging.DEBUG)
+    ch = logging.FileHandler(".logs_cache")
+    ch.setLevel(logging.DEBUG)
+    ch.setFormatter(logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s'))
+    logger.addHandler(ch)
+    return logger

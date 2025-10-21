@@ -9,6 +9,7 @@ import pandas as pd
 from tqdm import tqdm
 import json
 
+from ..utils import get_logger
 from .alpaca import get_assets
 from . import alpha_vantage as AV
 
@@ -20,6 +21,7 @@ MAX_RETRIES = 3
 RETRY_WAIT = 60 # number of seconds to wait on api error before retrying
 
 memory = Memory(".alpha_vantage_cache", verbose=0)
+logger = get_logger()
 
 
 def time_iterator(
@@ -102,7 +104,6 @@ def fetch_news_sentiment(symbol: str, time_from: datetime, time_to: datetime) ->
     return df
 
 
-@memory.cache # type: ignore
 def aggregate_news_sentiment(raw: pd.DataFrame) -> pd.DataFrame:
     idx = pd.to_datetime(raw.index, utc=True, errors='coerce').tz_convert("America/New_York")
     group = idx.normalize()
@@ -132,7 +133,6 @@ def build_features_for_ticker(symbol:str) -> pd.DataFrame:
     # We get NaNs when performing the join on missing entries for news
     time_series_df = time_series_df.join(news_df, how="left") 
     time_series_df[news_cols] = time_series_df[news_cols].fillna(0.0)
-    
     return time_series_df
 
 
@@ -140,30 +140,29 @@ def save_data(
     symbols: List[str],
     path: Path = Path(".alpha_vantage_cache", "dataset"),
     overwrite: bool = False,
-    log_path: str = ".logs_cache"
 ):
     path.mkdir(parents=True, exist_ok=True)
-    with open(log_path, "a", encoding="utf-8") as log:
-        for symbol in tqdm(symbols, total=len(symbols), desc="Saving features for tickers"):
-            attempt = 0
-            while True:
-                try:
-                    out_path = save_ticker(symbol, path=path, overwrite=overwrite)
-                    update_manifest_entry(symbol, out_path.name, path / "manifest.json")
-                    log.write(f"{datetime.now().isoformat()} | OK | {symbol}\n")
+    logger.info(f"Started to process len(symbols) tickers")
+    for symbol in tqdm(symbols, total=len(symbols), desc="Saving features for tickers"):
+        attempt = 0
+        while True:
+            try:
+                out_path = save_ticker(symbol, path=path, overwrite=overwrite)
+                update_manifest_entry(symbol, out_path.name, path / "manifest.json")
+                logger.info(f"Processed and saved {symbol}")
+                break
+            except AV.APIError as api_error:
+                attempt += 1
+                logger.error(f"{symbol} | {api_error}")
+                if attempt < MAX_RETRIES:
+                    time.sleep(RETRY_WAIT)
+                    continue
+                else: 
+                    logger.critical(f"{symbol} | Maximum number of retries was achieved.")
                     break
-                except AV.APIError as api_error:
-                    attempt += 1
-                    log.write(f"{datetime.now().isoformat()} | API_ERROR | {symbol} | {api_error}\n")
-                    if attempt < MAX_RETRIES:
-                        time.sleep(RETRY_WAIT)
-                        continue
-                    else: 
-                        log.write(f"{datetime.now().isoformat()} | API_ERROR | {symbol} | Maximum number of retries has been exceeded.")
-                        break
-                except Exception as error:
-                    log.write(f"{datetime.now().isoformat()} | ERROR | {symbol} | {error}\n")
-                    break
+            except Exception as error:
+                logger.critical(f"{symbol} | {error}")
+                break
     
 def save_ticker(symbol: str, path: Path, overwrite: bool = False) -> Path:
     out_path = path / f"{symbol}.parquet"
@@ -173,8 +172,15 @@ def save_ticker(symbol: str, path: Path, overwrite: bool = False) -> Path:
     
     df = build_features_for_ticker(symbol)
     tmp = out_path.with_suffix(out_path.suffix + ".tmp")
-    df.reset_index().to_parquet(tmp, engine="pyarrow", compression="zstd")
-    tmp.replace(out_path)
+    try:
+        df.reset_index().to_parquet(tmp, engine="pyarrow", compression="zstd")
+        tmp.replace(out_path)
+    finally:
+        try:
+            if tmp.exists() and not out_path.exists():
+                tmp.unlink()
+        except:
+            pass
     return out_path
     
 def update_manifest_entry(ticker: str, file_name: str, manifest_path: Path):
@@ -219,9 +225,8 @@ def filter_tickers(all_tickers: List[str]) -> List[str]:
 
 if __name__ == '__main__':
     ...
-    # memory.clear(warn=False)
-    # all_tickers = [asset.symbol for asset in get_assets()]
-    # chosen_tickers = save_tickers(all_tickers)
-    # with open("tickers", "w", encoding="utf-8") as file:
-    #     file.writelines(chosen_tickers)
-    # print(f"Done! Total tickers saved: {len(chosen_tickers)}")
+    memory.clear(warn=False)
+    with open('tickers', 'r', encoding='utf-8') as file:
+        tickers = file.readlines()
+    tickers = [ticker.strip() for ticker in tickers]
+    save_data(tickers, overwrite=True)
