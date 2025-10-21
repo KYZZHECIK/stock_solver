@@ -9,7 +9,7 @@ from tqdm import tqdm
 import json
 
 from .alpaca import get_assets
-import stock_solver.dataset.apis.alpha_vantage as AV
+from . import alpha_vantage as AV
 
 TICKERS_LIMIT = 500
 TIME_STEP = timedelta(days=30)
@@ -188,26 +188,6 @@ def update_manifest_entry(ticker: str, file_name: str, manifest_path: Path):
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
 
-# def save_data(data: Dict[str, pd.DataFrame], root: str = ".alpha_vantage_cache", folder: str = "dataset"):
-#     path = Path(root) / folder
-#     path.mkdir(parents=True, exist_ok=True)
-
-#     manifest: Dict[str, Any] = {
-#         "version": "1",
-#         "created_at": datetime.now().strftime("%d/%m/%Y, %H:%M:%S"),
-#         "tickers": []
-#     }
-
-#     for ticker, df in data.items():
-#         out_path = path / f"{ticker}.parquet"
-#         df.reset_index().to_parquet(
-#             out_path,
-#             engine="pyarrow",
-#             compression="zstd"
-#         )
-#         manifest["tickers"].append({"ticker": ticker, "file": f"{ticker}.parquet"})
-#     (path / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-        
 
 def load_data(root: str = ".alpha_vantage_cache", folder: str = "dataset") -> Dict[str, pd.DataFrame]:
     path = Path(root) / folder
