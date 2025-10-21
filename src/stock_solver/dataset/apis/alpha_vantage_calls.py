@@ -205,7 +205,7 @@ def load_data(root: str = ".alpha_vantage_cache", folder: str = "dataset") -> Di
 
 
 @memory.cache
-def save_tickers(all_tickers: List[str]) -> List[str]:
+def filter_tickers(all_tickers: List[str]) -> List[str]:
     tickers: List[str] = []
     for ticker in tqdm(all_tickers, total=len(all_tickers), desc='Choosing Tickers'):
         response = AV.OverviewRequest(symbol=ticker).query()
