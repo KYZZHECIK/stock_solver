@@ -48,16 +48,16 @@ flowchart TD
     Concat --> FM
     FM --> DA[Torch Dataset]
 ```
-First, we obtain the list of available tickers using [Alpaca API](https://alpaca.markets/) to gain an initial list of active tickers in the US market. However, using this approach alone, leaves us with almost 13,000 tickers. We further filter the list of tickers using Company Overview endpoint provided by [Alpha Vantage](https://www.alphavantage.co/). The filer keeps only common stocks (no cryptocurrencies) with a minimum market capitalisation of 1,000,000,000$. This leaves us with around 2,000 tickers. For each ticker we collect the data by calling Daily Time Series and News Sentiment endpoints. The time series endpoint returns all the available information in one call. For newws sentiment, we iterate over smaller time windows so that we can page through
+First, we obtain the list of available tickers using [Alpaca API](https://alpaca.markets/) to gain an initial list of active tickers in the US market. However, using this approach alone, leaves us with almost 13,000 tickers. We further filter the list of tickers using Company Overview endpoint provided by [Alpha Vantage](https://www.alphavantage.co/). The filer keeps only common stocks (no cryptocurrencies) with a minimum market capitalisation of 1,000,000,000$. This leaves us with around 2,000 tickers. For each ticker we collect the data by calling Daily Time Series and News Sentiment endpoints. The time series endpoint returns all the available information in one call. The news sentiment endpoint supports the call for given time windows, but it does not work as expected for long periods of time, as the results are intraday and the number of news per request is quite limited. Therefore, we iterate using smaller time windows and aggregate the results over the day.
 
 ### Building per-ticker feature matrices
 
-Each ticker is process independently through `build_features_for_ticker` in `src/stock_solver/dataset/apis/alpha_vantage_calls.py`. The function downloads the daily OHLCV series and daily aggregates of the news sentiment feed. The two sources are joined on the trading day to produce a **feature matrix** of shape `[#days, #features]`
+Each ticker is processed independently through `build_features_for_ticker` in `src/stock_solver/dataset/apis/alpha_vantage_calls.py`. The function downloads the daily OHLCV series and daily aggregates of the news sentiment feed. The two sources are joined on the trading day to produce a **feature matrix** of shape `[#days, #features]`
 
 Once the matrix is constructed, it is written to `<dataset_path>/<TICKER>.parquet`. We additionally maintain  a `manifest.json` file inside the dataset folder with the list of exported tickers and the corresponding parquet file names. 
 
 ### "Unrolling" the data into a PyTorch Dataset
-`MultitickerDataset` in `src/stock_solver/dataset/dataset.py` converts the dictionary of ticker -> ticker's feature matrix into an "unrolled" pytorch dataset. For each ticker we:
+The `MultitickerDataset` class in `src/stock_solver/dataset/dataset.py` converts the ticker to feature matrix dictionary into an "unrolled" pytorch dataset. For each ticker we:
 
 1. Select the feature columns
 2. Select the target column
