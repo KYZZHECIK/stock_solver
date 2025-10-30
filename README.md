@@ -52,7 +52,7 @@ First, we obtain the list of available tickers using [Alpaca API](https://alpaca
 
 ### Building per-ticker feature matrices
 
-Each ticker is process independently through `build_features_for_ticker` in `src/stock_solver/dataset/apis/alpha_vantage_calls.py`. The functions downloads the daily OHLCV series and daily aggregates of the news sentiment feed. The two sources are joined on the trading day to produce a **feature matrix** of shape `[#days, #features]`
+Each ticker is process independently through `build_features_for_ticker` in `src/stock_solver/dataset/apis/alpha_vantage_calls.py`. The function downloads the daily OHLCV series and daily aggregates of the news sentiment feed. The two sources are joined on the trading day to produce a **feature matrix** of shape `[#days, #features]`
 
 Once the matrix is constructed, it is written to `<dataset_path>/<TICKER>.parquet`. We additionally maintain  a `manifest.json` file inside the dataset folder with the list of exported tickers and the corresponding parquet file names. 
 
@@ -61,7 +61,7 @@ Once the matrix is constructed, it is written to `<dataset_path>/<TICKER>.parque
 
 1. Select the feature columns
 2. Select the target column
-3. Enumerate all valid sliding windows of length `lookback` with a prediction of `horizon` length. Every windoww is represented by a `WindowIndex` that stores the ticker id and star index.
+3. Enumerate all valid sliding windows of length `lookback + horizon`. Every window is represented by a `WindowIndex` that stores the ticker id and star index.
 
 In `__getitem__` we use the `WindowIndex` to pull the feature block and the associated calendar features. Encoding (`enc_marks`) and decoding (`dec_marks`) date markers are derived from the original trading calendar and expanded into `[month, day, weekday]` integers. Training batches therefore return:
 ```
