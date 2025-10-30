@@ -20,5 +20,5 @@ class OverviewResult(Result):
     @classmethod
     def _is_significant_mc(cls, v: int):
         if v < MIN_MARKET_CAPITALIZATION:
-            raise ValueError("Ticker has market cap below 1 mil")
+            raise ValueError("Ticker has market cap below 1 bil")
         return v
